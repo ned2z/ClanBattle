@@ -11,10 +11,11 @@ export interface VfxHost {
   glowTex: THREE.Texture; circleTex: THREE.Texture;
 }
 
-export type Tech =
-  | 'strike' | 'multi' | 'bigslash' | 'whirl' | 'thrust' | 'leap' | 'shoot' | 'arrows' | 'cannon' | 'fireball' | 'meteor'
-  | 'blizzard' | 'icelance' | 'lightning' | 'chain' | 'dragon' | 'tornado' | 'dark' | 'drain' | 'holy' | 'poison' | 'heal'
-  | 'healall' | 'revive' | 'buff' | 'buffall' | 'debuff' | 'coin' | 'chains' | 'mana' | 'item' | 'none';
+// effect families + the choreography itself live in the data layer
+export type { Tech, Target, TechCtx, Step, Args, Recipe, Feature } from '../data/fx/types';
+export { RECIPES, IMPACT, PRIMS, FEATURES } from '../data/fx';
+import type { Target, Tech, TechCtx, Feature } from '../data/fx/types';
+import { FxRunner, RECIPES, FEATURES } from '../data/fx';
 
 const TECH: Record<string, Tech> = {
   s_taunt: 'buff', s_bash: 'leap', s_fort: 'buffall', b_cleave: 'bigslash', b_storm: 'whirl', b_rage: 'buff',
@@ -41,13 +42,6 @@ const TECH: Record<string, Tech> = {
   u_archmage: 'meteor', u_necro: 'dark', u_bishop: 'revive', u_sage: 'holy', u_smith: 'leap', u_alchemist: 'healall',
 };
 
-/** windup time (seconds at 1x) until the hit lands */
-export const IMPACT: Record<Tech, number> = {
-  strike: 0.34, multi: 0.38, bigslash: 0.62, whirl: 0.55, thrust: 0.42, leap: 0.62, shoot: 0.36, arrows: 0.85, cannon: 0.62,
-  fireball: 0.66, meteor: 0.95, blizzard: 0.75, icelance: 0.55, lightning: 0.6, chain: 0.55, dragon: 0.62, tornado: 0.66,
-  dark: 0.66, drain: 0.45, holy: 0.62, poison: 0.42, heal: 0.48, healall: 0.58, revive: 0.85, buff: 0.48, buffall: 0.58,
-  debuff: 0.52, coin: 0.48, chains: 0.52, mana: 0.78, item: 0.3, none: 0.2,
-};
 export const BIG_TECH = new Set<Tech>(['bigslash', 'whirl', 'leap', 'meteor', 'blizzard', 'lightning', 'dragon', 'tornado', 'dark', 'holy', 'revive', 'mana', 'cannon', 'arrows', 'healall', 'chain', 'fireball', 'buffall']);
 export const MELEE_TECH = new Set<Tech>(['strike', 'multi', 'bigslash', 'whirl', 'thrust', 'leap', 'poison', 'drain']);
 
@@ -61,21 +55,12 @@ export function techFor(ev: ActionEvent, actor: Unit): Tech {
   return (ev.skillId && TECH[ev.skillId]) || (ev.kind === 'heal' ? 'heal' : ev.kind === 'buff' ? 'buff' : ev.kind === 'debuff' ? 'debuff' : ev.kind === 'mag' ? 'fireball' : 'strike');
 }
 
-export interface TechCtx {
-  from: THREE.Vector3;      // actor chest
-  fromBase: THREE.Vector3;  // actor feet
-  fwd: THREE.Vector3;
-  targets: { chest: THREE.Vector3; base: THREE.Vector3 }[];
-  color: number;
-  impact: number;           // seconds (speed-scaled)
-  big: boolean;
-}
-
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
 export class Vfx {
   private crackTex: THREE.Texture;
-  private streakTex: THREE.Texture;
+  streakTex: THREE.Texture;
+
   constructor(private h: VfxHost) {
     this.crackTex = canvasTex(256, 256, (c, w) => {
       c.translate(w / 2, w / 2); c.strokeStyle = '#fff'; c.lineCap = 'round'; c.shadowColor = '#fff'; c.shadowBlur = 8;
@@ -94,10 +79,10 @@ export class Vfx {
   dispose() { this.crackTex.dispose(); this.streakTex.dispose(); }
 
   // ------------------------------------------------------------ primitives
-  private basic(color: number, map?: THREE.Texture, opts: Partial<THREE.MeshBasicMaterialParameters> = {}) {
+  basic(color: number, map?: THREE.Texture, opts: Partial<THREE.MeshBasicMaterialParameters> = {}) {
     return new THREE.MeshBasicMaterial({ color, map, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, ...opts });
   }
-  private temp(obj: THREE.Object3D, dur: number, update: (k: number, dt: number) => void) {
+  temp(obj: THREE.Object3D, dur: number, update: (k: number, dt: number) => void) {
     this.h.scene.add(obj);
     this.h.addFx({ t: 0, dur, update, dispose: () => { this.h.scene.remove(obj); obj.traverse((o) => { const m = o as THREE.Mesh; m.geometry?.dispose(); const mt = m.material as THREE.Material | undefined; mt?.dispose(); }); } });
   }
@@ -186,212 +171,20 @@ export class Vfx {
   }
 
   // ------------------------------------------------------------ techniques
-  play(tech: Tech, c: TechCtx) {
-    const h = this.h; const T = c.impact; const col = c.color;
-    const at = (frac: number, fn: () => void) => h.later(Math.max(0, T * frac), fn);
+  /**
+   * The choreography is data, not code: see `src/data/fx/recipes.ts`.
+   * This method just hands the recipe to the runner and applies its "feel".
+   */
+  play(tech: Tech, c: TechCtx, featureId?: string) {
+    const feature: Feature | undefined = featureId ? FEATURES[featureId] : undefined;
     const centre = c.targets.reduce((a, t) => a.add(t.base), new THREE.Vector3()).divideScalar(Math.max(1, c.targets.length));
-    const aura = (dur: number, n = 1) => {
-      const steps = Math.ceil(dur / 0.03);
-      for (let i = 0; i < steps; i++) h.later(i * 0.03, () => { for (let j = 0; j < n; j++) { const a = Math.random() * Math.PI * 2; h.add.spawn(c.fromBase.x + Math.cos(a) * 0.55, 0.1, c.fromBase.z + Math.sin(a) * 0.55, -Math.cos(a) * 0.3, rnd(2, 3.5), -Math.sin(a) * 0.3, 0.5, 0.22, col, 0, 0.95); } });
-    };
-    switch (tech) {
-      case 'strike':
-        break;
-      case 'multi':
-        at(0.1, () => aura(T * 0.6));
-        c.targets.forEach((t) => { at(1, () => { this.slash(t.chest, col, 1.4, 0.6); }); h.later(T + 0.07, () => this.slash(t.chest, 0xffffff, 1.5, -0.8)); h.later(T + 0.14, () => this.slash(t.chest, col, 1.2, 2.2)); });
-        break;
-      case 'bigslash':
-        this.circle(c.fromBase, col, T * 1.2, 2);
-        aura(T, 3);
-        at(0.3, () => this.glow(c.from, col, 2.2, T * 0.7));
-        c.targets.forEach((t) => at(1, () => { this.slash(t.chest, col, 3.2, -0.5, 0.45); this.slash(t.chest, 0xffffff, 2.4, 0.3, 0.35); this.crack(t.base, col, 3.2); this.shockwave(t.base, col, 4.5, 0.6); this.debris(t.base, 20); h.hitstop(0.09); h.shake(0.5, 0.4); h.flash(t.chest, col, 40); }));
-        break;
-      case 'whirl': {
-        this.circle(c.fromBase, col, T * 1.4, 2.6);
-        at(0.35, () => {
-          const ring = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.06, 6, 40), this.basic(col));
-          ring.rotation.x = -Math.PI / 2; ring.position.copy(centre).setY(0.9);
-          this.temp(ring, T * 1.1, (k, dt) => { ring.rotation.z += dt * 18; const s = 0.6 + k * 0.8; ring.scale.set(s, s, s); (ring.material as THREE.MeshBasicMaterial).opacity = 1 - k * 0.8; for (let i = 0; i < 3; i++) { const a = Math.random() * Math.PI * 2; h.add.spawn(centre.x + Math.cos(a) * 1.6 * s, 0.9, centre.z + Math.sin(a) * 1.6 * s, -Math.sin(a) * 4, 0.5, Math.cos(a) * 4, 0.3, 0.2, col); } });
-        });
-        c.targets.forEach((t, i) => { at(1, () => this.slash(t.chest, col, 1.8, i)); h.later(T + 0.1, () => this.slash(t.chest, 0xffffff, 1.6, i + 2)); });
-        at(1, () => { this.shockwave(centre, col, 5, 0.6); h.shake(0.35, 0.35); });
-        break;
-      }
-      case 'thrust':
-        aura(T * 0.8, 2);
-        c.targets.forEach((t) => at(1, () => { const back = t.chest.clone().sub(c.fwd.clone().multiplyScalar(2)); const fwd = t.chest.clone().add(c.fwd.clone().multiplyScalar(2.2)); this.beam(back, fwd, col, 0.22, 0.12); this.glow(t.chest, 0xffffff, 2.4, 0.25); h.add.burst(t.chest, col, 30, { dir: c.fwd.clone().multiplyScalar(6), speed: 1, life: 0.4, size: 0.2 }); h.hitstop(0.06); }));
-        break;
-      case 'leap':
-        aura(T * 0.5, 2);
-        c.targets.forEach((t) => at(1, () => { this.crack(t.base, col, 3.6); this.shockwave(t.base, col, 5, 0.55); this.shockwave(t.base, 0xffffff, 3, 0.35); this.debris(t.base, 30); h.shake(0.6, 0.45); h.hitstop(0.08); h.flash(t.base, col, 30); }));
-        break;
-      case 'shoot':
-        c.targets.forEach((t) => { const fl = Math.min(0.26, T * 0.55); h.later(Math.max(0, T - fl), () => { const f = c.from.clone().add(c.fwd.clone().multiplyScalar(0.4)); this.glow(f, col, 0.8, 0.15); this.projectile(f, t.chest, col, fl, 0.55, 0.2, 1); }); });
-        break;
-      case 'arrows':
-        this.circle(c.fromBase, col, T, 1.6);
-        at(0.25, () => { const up = c.from.clone(); for (let i = 0; i < 10; i++) this.projectile(up, up.clone().add(new THREE.Vector3(rnd(-1, 1), 8, rnd(-1, 1))), 0xffe28a, 0.25, 0.3, 0, 0.5); });
-        c.targets.forEach((t) => { for (let i = 0; i < 6; i++) h.later(Math.max(0, T - 0.28 + i * 0.03), () => { const end = t.base.clone().add(new THREE.Vector3(rnd(-0.6, 0.6), 0.6, rnd(-0.6, 0.6))); this.projectile(end.clone().add(new THREE.Vector3(rnd(-1, 1), 9, 1.5)), end, 0xffe28a, 0.26, 0.35, 0, 1); }); });
-        at(1, () => h.shake(0.25, 0.3));
-        break;
-      case 'cannon':
-        at(0.5, () => { const f = c.from.clone().add(c.fwd.clone().multiplyScalar(0.8)); this.glow(f, 0xffc070, 3, 0.25); h.add.burst(f, 0xffa040, 30, { dir: c.fwd.clone().multiplyScalar(5), speed: 1, life: 0.4 }); for (let i = 0; i < 8; i++) h.norm.spawn(f.x, f.y, f.z, c.fwd.x * 2 + rnd(-0.5, 0.5), rnd(0.2, 1), c.fwd.z * 2, 1.2, 0.8, 0x777066, 0, 0.9, 2); h.shake(0.3, 0.2); });
-        c.targets.forEach((t) => { h.later(T * 0.5, () => this.projectile(c.from, t.chest, 0xff8030, T * 0.5, 0.8, 1.6)); at(1, () => this.explode(t.chest, 0xff7a2a, 1.2)); });
-        break;
-      case 'fireball': {
-        this.circle(c.fromBase, col, T * 1.1, 1.9);
-        const orbPos = c.from.clone().add(c.fwd.clone().multiplyScalar(0.5)); orbPos.y += 0.6;
-        const orb = new THREE.Sprite(new THREE.SpriteMaterial({ map: h.glowTex, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
-        orb.position.copy(orbPos);
-        this.temp(orb, T * 0.62, (k) => { const s = 0.3 + k * 1.3; orb.scale.set(s, s, 1); if (Math.random() < 0.8) { const a = Math.random() * Math.PI * 2; h.add.spawn(orbPos.x + Math.cos(a) * 1.2, orbPos.y + rnd(-0.8, 0.8), orbPos.z + Math.sin(a) * 1.2, -Math.cos(a) * 3, 0, -Math.sin(a) * 3, 0.35, 0.2, col); } });
-        c.targets.forEach((t, i) => { h.later(T * 0.62, () => this.projectile(orbPos, t.chest, col, T * 0.38 + i * 0.01, 1.5, 0.6, 3)); at(1, () => this.explode(t.chest, col, 1.2)); });
-        break;
-      }
-      case 'meteor':
-        this.circle(c.fromBase, col, T, 2);
-        at(0.1, () => h.flash(c.from, col, 12));
-        c.targets.forEach((t, i) => { const fl = T * 0.45; h.later(T - fl + i * 0.02, () => this.projectile(t.chest.clone().add(new THREE.Vector3(3, 12, -4)), t.base.clone().setY(0.3), 0xff6020, fl, 1.8, 0, 4)); h.later(T + i * 0.02, () => { this.explode(t.chest, 0xff6020, 1.5); this.crack(t.base, 0xff6020, 3); this.debris(t.base, 16); }); });
-        at(1, () => { h.shake(0.6, 0.5); h.hitstop(0.07); });
-        break;
-      case 'blizzard':
-        this.circle(c.fromBase, col, T * 1.1, 2);
-        this.circle(centre, col, T * 1.4, 4.5);
-        for (let i = 0; i < 18; i++) h.later(T * 0.25 + i * T * 0.04, () => { for (let j = 0; j < 8; j++) { const a = Math.random() * Math.PI * 2, r = rnd(0, 2.6); h.add.spawn(centre.x + Math.cos(a) * r, rnd(2, 4), centre.z + Math.sin(a) * r, -Math.sin(a) * 3, -2, Math.cos(a) * 3, 0.8, 0.18, 0xe8faff); } });
-        c.targets.forEach((t) => at(1, () => { this.iceSpikes(t.base, 1.1); this.glow(t.chest, 0x9adfff, 2.5, 0.4); }));
-        at(1, () => { this.shockwave(centre, 0x9adfff, 5, 0.7); h.shake(0.3, 0.3); });
-        break;
-      case 'icelance':
-        this.circle(c.fromBase, col, T, 1.7);
-        c.targets.forEach((t) => {
-          const fl = T * 0.4;
-          h.later(T - fl, () => {
-            const g = new THREE.ConeGeometry(0.14, 1.4, 6); g.rotateX(Math.PI / 2);
-            const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xcff2ff, emissive: 0x4ab8ff, emissiveIntensity: 2, flatShading: true }));
-            const from = c.from.clone().add(new THREE.Vector3(0, 0.8, 0)); m.position.copy(from); m.lookAt(t.chest);
-            this.temp(m, fl, (k) => { m.position.lerpVectors(from, t.chest, k * k); h.add.spawn(m.position.x, m.position.y, m.position.z, 0, 0, 0, 0.3, 0.3, 0x9adfff); });
-          });
-          at(1, () => { this.iceSpikes(t.base, 0.8); h.add.burst(t.chest, 0xffffff, 20, { speed: 6, life: 0.4, size: 0.15 }); });
-        });
-        break;
-      case 'lightning':
-        this.circle(c.fromBase, col, T * 1.1, 1.9);
-        at(0.2, () => c.targets.forEach((t) => { const cloud = t.base.clone().setY(6); this.glow(cloud, 0x6a5aff, 4, T * 0.9); }));
-        c.targets.forEach((t) => { at(1, () => { this.bolt(t.base.clone().setY(0.1)); this.crack(t.base, 0xfff27a, 2.2); }); h.later(T + 0.09, () => this.bolt(t.chest)); });
-        at(1, () => { h.shake(0.45, 0.35); h.hitstop(0.07); });
-        break;
-      case 'chain': {
-        this.circle(c.fromBase, col, T, 1.7);
-        let prev = c.from.clone().add(new THREE.Vector3(0, 0.4, 0));
-        c.targets.forEach((t, i) => { const p0 = prev.clone(); h.later(T + i * 0.06, () => this.bolt(t.chest, p0, 0xa0e0ff)); prev = t.chest.clone(); });
-        at(1, () => h.shake(0.3, 0.3));
-        break;
-      }
-      case 'dragon': {
-        this.circle(c.fromBase, col, T * 1.3, 2.3);
-        const dir = centre.clone().setY(1).sub(c.from).normalize();
-        const start = T * 0.45, end = T + 0.2;
-        for (let tt = start; tt < end; tt += 0.025) h.later(tt, () => { const o = c.from.clone().add(dir.clone().multiplyScalar(0.5)); for (let j = 0; j < 7; j++) { const v = dir.clone().multiplyScalar(rnd(8, 12)).add(new THREE.Vector3(rnd(-1.8, 1.8), rnd(-0.8, 1.2), rnd(-1.8, 1.8))); h.add.spawn(o.x, o.y, o.z, v.x, v.y, v.z, 0.55, rnd(0.35, 0.7), Math.random() < 0.5 ? 0xff7a2a : 0xffd04a, 0, 0.9, 1.5); } });
-        c.targets.forEach((t) => at(1, () => this.explode(t.chest, col, 1)));
-        at(1, () => h.shake(0.4, 0.5));
-        break;
-      }
-      case 'tornado': {
-        this.circle(c.fromBase, col, T, 1.8);
-        const pos = c.targets.length === 1 ? c.targets[0].base.clone() : centre.clone();
-        at(0.4, () => {
-          const g = new THREE.CylinderGeometry(1.4, 0.25, 4, 20, 4, true); g.translate(0, 2, 0);
-          const m = new THREE.Mesh(g, this.basic(col, this.streakTex, { opacity: 0.5 }));
-          m.position.copy(pos).setY(0);
-          this.temp(m, T * 0.6 + 0.5, (k, dt) => { m.rotation.y += dt * 14; const w = Math.sin(Math.min(1, k * 1.2) * Math.PI); m.scale.set(w * (c.targets.length > 1 ? 1.6 : 1), 0.5 + w * 0.6, w * (c.targets.length > 1 ? 1.6 : 1)); for (let i = 0; i < 4; i++) { const a = Math.random() * Math.PI * 2, y = Math.random() * 3.5, r = 0.3 + y * 0.3; h.add.spawn(pos.x + Math.cos(a) * r, y, pos.z + Math.sin(a) * r, -Math.sin(a) * 5, 1, Math.cos(a) * 5, 0.35, 0.2, col); } });
-        });
-        at(1, () => h.shake(0.3, 0.4));
-        break;
-      }
-      case 'dark':
-        this.circle(c.fromBase, 0x9a5aff, T * 1.1, 2);
-        c.targets.forEach((t) => {
-          at(0.25, () => {
-            const sph = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshBasicMaterial({ color: 0x14001f, transparent: true, depthWrite: false }));
-            sph.position.copy(t.chest);
-            this.temp(sph, T * 0.75, (k) => { const s = k < 0.7 ? 0.2 + k * 1.4 : (1 - k) * 3.5; sph.scale.setScalar(Math.max(0.01, s)); (sph.material as THREE.MeshBasicMaterial).opacity = 0.85; for (let i = 0; i < 3; i++) { const d = new THREE.Vector3(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).normalize().multiplyScalar(2); h.add.spawn(t.chest.x + d.x, t.chest.y + d.y, t.chest.z + d.z, -d.x * 3, -d.y * 3, -d.z * 3, 0.3, 0.2, 0xa06bff); } });
-            this.glow(t.chest, 0x7a3aff, 3.5, T * 0.8);
-          });
-          at(1, () => { h.add.burst(t.chest, 0xb07aff, 40, { speed: 8, life: 0.5, size: 0.3 }); this.shockwave(t.base, 0x7a3aff, 3.5, 0.5); });
-        });
-        at(1, () => h.shake(0.35, 0.3));
-        break;
-      case 'drain':
-        c.targets.forEach((t) => h.later(T + 0.05, () => { for (let i = 0; i < 5; i++) h.later(i * 0.04, () => this.projectile(t.chest, c.from, 0xff3355, 0.35, 0.4, rnd(0.3, 1.2), 1)); }));
-        break;
-      case 'holy':
-        this.circle(c.fromBase, col, T * 1.1, 1.9);
-        c.targets.forEach((t) => { at(0.3, () => this.circle(t.base, 0xfff3c0, T * 0.9, 2.2)); at(0.85, () => this.pillar(t.base, 0xfff3c0, 0.7, 0.8)); at(1, () => { this.glow(t.chest, 0xffffff, 3.5, 0.4); h.add.burst(t.chest, 0xfff3c0, 30, { speed: 5, life: 0.6, up: true }); }); });
-        at(1, () => { h.shake(0.3, 0.3); h.flash(centre, 0xfff3c0, 30); });
-        break;
-      case 'poison':
-        c.targets.forEach((t) => at(1, () => { for (let i = 0; i < 16; i++) h.norm.spawn(t.chest.x + rnd(-0.5, 0.5), t.chest.y + rnd(-0.4, 0.4), t.chest.z + rnd(-0.5, 0.5), rnd(-0.6, 0.6), rnd(0.2, 0.8), rnd(-0.6, 0.6), 1.2, 0.8, 0x4a8a20, 0, 0.9, 1.5); h.add.burst(t.chest, 0x8be04a, 24, { speed: 3, life: 0.8, size: 0.25 }); }));
-        break;
-      case 'heal':
-        this.circle(c.fromBase, 0x86efac, T, 1.6);
-        c.targets.forEach((t) => { this.circle(t.base, 0x86efac, T + 0.6, 1.8); at(1, () => { this.pillar(t.base, 0x86efac, 0.7, 0.55, 5); h.add.burst(t.base.clone().setY(0.2), 0xbbf7d0, 30, { speed: 2.5, up: true, life: 1.1, gravity: -1.5, spread: 1.2 }); }); });
-        break;
-      case 'healall':
-        this.circle(c.fromBase, 0x86efac, T * 1.2, 2);
-        at(0.2, () => this.circle(centre, 0x86efac, T + 0.8, 5.5));
-        for (let i = 0; i < 12; i++) h.later(T * 0.3 + i * 0.05, () => { for (let j = 0; j < 4; j++) { const a = Math.random() * Math.PI * 2, r = rnd(0, 3); h.add.spawn(centre.x + Math.cos(a) * r, 4, centre.z + Math.sin(a) * r, 0, -1.5, 0, 1.2, 0.22, 0xfff3c0, 0, 0.99); } });
-        c.targets.forEach((t) => at(1, () => { this.pillar(t.base, 0x86efac, 0.8, 0.5, 5); h.add.burst(t.base.clone().setY(0.2), 0xbbf7d0, 20, { speed: 2.4, up: true, life: 1, gravity: -1.5, spread: 1 }); }));
-        break;
-      case 'revive':
-        this.circle(c.fromBase, 0xfff3c0, T * 1.2, 2);
-        c.targets.forEach((t) => {
-          this.circle(t.base, 0xfff3c0, T + 1, 2.6);
-          for (let i = 0; i < 20; i++) h.later(i * T * 0.04, () => h.add.spawn(t.base.x + rnd(-1.2, 1.2), 5, t.base.z + rnd(-1.2, 1.2), rnd(-0.3, 0.3), -2, rnd(-0.3, 0.3), 2, 0.3, 0xffffff, 0, 0.99));
-          at(0.9, () => { this.pillar(t.base, 0xfff3c0, 1.1, 1, 12); h.flash(t.chest, 0xfff3c0, 40); });
-          at(1, () => { this.shockwave(t.base, 0xfff3c0, 4, 0.8); this.glow(t.chest, 0xffffff, 5, 0.6); });
-        });
-        break;
-      case 'buff':
-        this.circle(c.fromBase, col, T + 0.4, 1.8);
-        aura(T + 0.2, 3);
-        at(1, () => { this.shockwave(c.fromBase, col, 2.6, 0.5); this.pillar(c.fromBase, col, 0.5, 0.6, 4); this.glow(c.from, col, 3, 0.4); });
-        break;
-      case 'buffall':
-        this.circle(c.fromBase, col, T, 1.8);
-        at(0.3, () => this.circle(centre, col, T + 0.6, 5.5));
-        aura(T, 2);
-        c.targets.forEach((t) => at(1, () => { this.pillar(t.base, col, 0.6, 0.55, 5); h.add.burst(t.base.clone().setY(0.1), col, 18, { speed: 3, up: true, life: 0.8, spread: 1 }); }));
-        at(1, () => this.shockwave(centre, col, 5, 0.7));
-        break;
-      case 'debuff':
-        this.circle(c.fromBase, 0x9a5aff, T, 1.7);
-        c.targets.forEach((t) => { at(0.3, () => this.circle(t.base, 0x9a5aff, T, 1.6)); at(1, () => { for (let i = 0; i < 16; i++) h.norm.spawn(t.chest.x + rnd(-0.6, 0.6), t.chest.y + 1.2, t.chest.z + rnd(-0.6, 0.6), 0, -1.5, 0, 0.9, 0.4, 0x2a0a3a, 0, 0.95, 1); h.add.burst(t.chest, 0xa06bff, 20, { speed: 2, life: 0.7 }); }); });
-        break;
-      case 'coin':
-        c.targets.forEach((t) => { for (let i = 0; i < 7; i++) h.later(Math.max(0, T - 0.3 + i * 0.02), () => this.projectile(c.from, t.chest.clone().add(new THREE.Vector3(rnd(-0.3, 0.3), rnd(-0.3, 0.3), rnd(-0.3, 0.3))), 0xffd35a, 0.3, 0.35, rnd(0.8, 1.8), 1)); at(1, () => h.add.burst(t.chest, 0xffd35a, 40, { speed: 6, gravity: 9, life: 0.9, size: 0.22 })); });
-        break;
-      case 'chains':
-        this.circle(c.fromBase, 0x9aa3b8, T, 1.6);
-        c.targets.forEach((t) => at(0.6, () => {
-          const n = 14; const grp = new THREE.Group(); const from = c.from.clone();
-          for (let i = 0; i < n; i++) { const l = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.03, 5, 10), new THREE.MeshStandardMaterial({ color: 0xaab2c0, metalness: 0.9, roughness: 0.3, emissive: 0x334455 })); l.rotation.y = i % 2 ? Math.PI / 2 : 0; grp.add(l); }
-          this.temp(grp, T * 0.4 + 0.45, (k) => { const reach = Math.min(1, k * 2.2); grp.children.forEach((l, i) => { l.position.lerpVectors(from, t.chest, (i / n) * reach); l.lookAt(t.chest); l.rotateZ(i % 2 ? Math.PI / 2 : 0); }); });
-        }));
-        break;
-      case 'mana': {
-        this.circle(c.fromBase, 0x5ee0ff, T * 1.2, 2.3);
-        const cp = c.from.clone().add(c.fwd.clone().multiplyScalar(0.6)); cp.y += 0.3;
-        for (let i = 0; i < 20; i++) h.later(i * T * 0.035, () => { for (let j = 0; j < 4; j++) { const d = new THREE.Vector3(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).normalize().multiplyScalar(1.8); h.add.spawn(cp.x + d.x, cp.y + d.y, cp.z + d.z, -d.x * 4, -d.y * 4, -d.z * 4, 0.3, 0.2, 0x5ee0ff); } });
-        at(0.2, () => this.glow(cp, 0x5ee0ff, 2, T * 0.8));
-        c.targets.forEach((t) => { at(0.85, () => this.beam(cp, t.chest, 0x5ee0ff, 0.45, 0.35)); at(1, () => this.explode(t.chest, 0x5ee0ff, 1.3)); });
-        at(1, () => { h.shake(0.5, 0.4); h.hitstop(0.08); });
-        break;
-      }
-      case 'item':
-        h.add.burst(c.from, 0xfff3c0, 16, { speed: 2, up: true, life: 0.6 });
-        break;
-      default: break;
-    }
+    const runner = new FxRunner({
+      v: this, h: this.h, c, centre, T: c.impact, col: c.color, rnd,
+      targets: c.targets as Target[],
+    });
+    runner.play(tech, feature);
+    const feel = { ...RECIPES[tech]?.feel, ...feature?.feel };
+    if (feel?.hitstop) this.h.hitstop(feel.hitstop);
   }
 
   explode(p: THREE.Vector3, color: number, scale = 1) {
