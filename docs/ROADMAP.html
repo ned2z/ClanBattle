@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Roadmap — สร้างเกม RPG ปาร์ตี้ 3D</title>
+<style>
+:root{
+  --bg:#0c0f0a; --panel:#151a12; --panel2:#1c2318; --line:#2f3a28;
+  --tx:#e8efe0; --tx2:#9fb096; --tx3:#6b7a64;
+  --ok:#5fd97a; --wip:#f0b429; --todo:#5a6b50; --block:#e5533d;
+  --acc:#f6c453; --acc2:#7dd3fc;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--tx); line-height:1.65;
+  font-family:"Kanit",-apple-system,"Sarabun",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--acc2);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px 100px}
+
+/* ---------- header ---------- */
+header{padding:64px 0 40px;border-bottom:1px solid var(--line);margin-bottom:48px}
+.kicker{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--acc);font-weight:600}
+h1{font-size:clamp(30px,5.5vw,52px);line-height:1.15;margin:14px 0 10px;letter-spacing:-.01em}
+h1 em{font-style:normal;color:var(--acc)}
+.sub{color:var(--tx2);font-size:17px;max-width:640px}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+.chip{font-size:12px;padding:5px 12px;border:1px solid var(--line);border-radius:999px;color:var(--tx2);background:var(--panel)}
+
+/* ---------- nav ---------- */
+nav{position:sticky;top:0;z-index:20;background:rgba(12,15,10,.93);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin-bottom:44px}
+nav .wrap{display:flex;gap:4px;overflow-x:auto;padding:10px 20px}
+nav a{white-space:nowrap;padding:7px 14px;border-radius:8px;font-size:14px;color:var(--tx2)}
+nav a:hover{background:var(--panel2);color:var(--tx);text-decoration:none}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+h2{font-size:14px;letter-spacing:.18em;text-transform:uppercase;color:var(--acc);
+   padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:28px}
+h3{font-size:22px;margin:36px 0 14px;color:var(--tx)}
+.lead{color:var(--tx2);margin-bottom:24px;max-width:720px}
+
+/* ---------- rules ---------- */
+.rule{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--acc);
+      border-radius:12px;padding:20px 22px;margin-bottom:14px}
+.rule .n{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;
+  border-radius:6px;background:var(--acc);color:#2a1a02;font-weight:800;font-size:13px;margin-right:10px}
+.rule h4{font-size:18px;display:inline}
+.rule p{color:var(--tx2);margin-top:8px;font-size:15px}
+.rule b{color:var(--tx)}
+
+/* ---------- phase map ---------- */
+.map{display:flex;flex-direction:column;gap:8px}
+.step{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:14px 18px;text-decoration:none;color:inherit}
+.step:hover{background:var(--panel2);border-color:#43513a;text-decoration:none}
+.step .no{font-family:ui-monospace,monospace;color:var(--tx3);font-size:13px;min-width:26px}
+.step .t{flex:1;font-weight:600;font-size:16px}
+.step .t span{color:var(--tx2);font-weight:400;font-size:14px;margin-left:8px}
+.step .st{font-size:11px;padding:3px 9px;border-radius:5px;font-weight:700;letter-spacing:.04em;white-space:nowrap}
+.st-done{background:rgba(95,217,122,.14);color:var(--ok)}
+.st-wip{background:rgba(240,180,41,.14);color:var(--wip)}
+.st-todo{background:rgba(90,107,80,.18);color:var(--todo)}
+.arrow{text-align:center;color:var(--tx3);font-size:13px;line-height:1;padding:1px 0}
+
+/* ---------- task card ---------- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:18px 20px;margin-bottom:12px;transition:border-color .15s}
+.card:hover{border-color:#3d4a34}
+.card.t-done{background:linear-gradient(90deg,rgba(95,217,122,.05),var(--panel) 40%)}
+.card.t-wip{background:linear-gradient(90deg,rgba(240,180,41,.06),var(--panel) 40%)}
+.card.t-todo{background:linear-gradient(90deg,rgba(90,107,80,.05),var(--panel) 40%)}
+.ch{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px}
+.ch .id{font-family:ui-monospace,monospace;font-size:12px;color:var(--tx3);
+  background:var(--panel2);border-radius:5px;padding:3px 7px;white-space:nowrap;margin-top:4px}
+.ch h4{font-size:17px;font-weight:600;flex:1;padding-top:2px}
+.ch h4 small{display:block;color:var(--tx3);font-weight:400;font-size:13px;margin-top:2px}
+.rows{display:grid;gap:7px;font-size:14px}
+.row{display:grid;grid-template-columns:104px 1fr;gap:12px}
+.row .k{color:var(--tx3);font-size:12px;padding-top:2px;letter-spacing:.03em}
+.row .v{color:var(--tx2)}
+.row .v b{color:var(--tx);font-weight:500}
+.row .v code{font-family:ui-monospace,monospace;font-size:12.5px;
+  background:var(--panel2);padding:1px 6px;border-radius:4px;color:var(--acc2)}
+.warn{margin-top:10px;padding:9px 12px;background:rgba(229,83,61,.08);
+  border-left:2px solid var(--block);border-radius:0 6px 6px 0;font-size:13.5px;color:#f0a898}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:520px}
+th{text-align:left;padding:11px 16px;background:var(--panel2);color:var(--tx3);
+   font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+   border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:11px 16px;border-bottom:1px solid rgba(47,58,40,.5);color:var(--tx2);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td b{color:var(--tx);font-weight:600}
+td code{font-family:ui-monospace,monospace;font-size:12.5px;color:var(--acc2)}
+
+/* ---------- lessons ---------- */
+.lesson{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:12px}
+.lesson h4{font-size:16px;color:#f0a898;margin-bottom:4px}
+.lesson .what{color:var(--tx2);font-size:14.5px;margin-bottom:8px}
+.lesson .fix{font-size:14.5px;color:#a8d8b0;padding-top:8px;border-top:1px dashed var(--line)}
+.lesson .fix b{color:var(--ok)}
+
+/* ---------- links ---------- */
+.links{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+.lk{display:block;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 16px}
+.lk:hover{background:var(--panel2);border-color:#43513a;text-decoration:none}
+.lk b{display:block;color:var(--tx);font-size:14.5px;margin-bottom:3px}
+.lk span{color:var(--tx3);font-size:13px}
+
+/* ---------- tips ---------- */
+.tip{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--acc2);
+  border-radius:0 10px 10px 0;padding:14px 18px;margin-bottom:10px}
+.tip h4{font-size:15.5px;margin-bottom:5px}
+.tip p{color:var(--tx2);font-size:14px}
+.tip code{font-family:ui-monospace,monospace;font-size:12.5px;background:var(--panel2);padding:1px 6px;border-radius:4px;color:var(--acc2)}
+
+footer{border-top:1px solid var(--line);padding-top:28px;color:var(--tx3);font-size:13.5px}
+@media(max-width:600px){
+  .row{grid-template-columns:1fr;gap:2px}
+  .row .k{margin-top:6px}
+  .step .t span{display:block;margin-left:0;margin-top:2px}
+}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <a href="#rules">🎯 กฎ</a>
+  <a href="#map">��️ แผนภาพ</a>
+  <a href="#tasks">📋 งาน</a>
+  <a href="#lessons">⚠️ บทเรียน</a>
+  <a href="#ref">📊 อ้างอิง</a>
+  <a href="#tips">💡 เคล็ดลับ</a>
+</div></nav>
+
+<div class="wrap">
+
+<header>
+  <div class="kicker">Game Dev Roadmap</div>
+  <h1>สร้างเกม RPG ปาร์ตี้ 3D<br><em>เริ่มจากศูนย์ จนถึงเกมเล่นได้จริง</em></h1>
+  <p class="sub">คู่มือลำดับการทำงาน สำหรับเกมต่อสู้แบบเทิร์นเทิร์น 3D แบบที่มี
+     ตัวละครสู้ร่วมกัน เดินทางบนแผนที่ อัปเกรด และเล่นซ้ำได้ &nbsp;<span style="opacity:.6">— เรียบเรียงจากโปรเจกต์ ClanBattle</span></p>
+  <div class="meta">
+    <span class="chip">9 เฟส · 25 งาน</span>
+    <span class="chip">React + TypeScript + Three.js</span>
+    <span class="chip">ประมาณ 4–6 เดือน คนเดียว</span>
+    <span class="chip">อัปเดต 29 ก.ย. 2026</span>
+  </div>
+</header>
+
+<section id="rules">
+  <h2>🎯 กฎ 5 ข้อ — ลำดับนี้สำคัญกว่าความยากของแต่ละงาน</h2>
+  <p class="lead">ถ้าจำได้แค่ห้าข้อนี้ ก็พอแล้ว ที่เหลือค่อยๆ ทีละก้อน</p>
+
+  <div class="rule">
+    <h4><span class="n">1</span>ตัวละคร + แอนิเมชัน มาก่อน VFX สวย ๆ เสมอ</h4>
+    <p>คุณภาพของเอฟเฟกต์ถูกจำกัดด้วยคุณภาพของการเคลื่อนที่ ถ้าตัวละครยังหมุนชิ้นส่วนได้
+       เอฟเฟกต์ที่ทำดีแค่ไหนก็จะ <b>ดูไม่เข้ากับการตีอยู่ดี</b> เพราะมันจับจังหวะ "จุดที่แขนกวาดถึงสุด" ไม่ได้<br>
+       <span style="opacity:.7">ฟีลแบบ FF7R มาจาก 4 อย่างเรียงกัน: ถอยก่อนทำ → ตามเกิน → VFX จับจังหวะ → กล้องจัดเฟรม</span></p>
+  </div>
+
+  <div class="rule">
+    <h4><span class="n">2</span>ทำเกมให้เล่นได้ก่อน ด้วยก้อนสี่เหลี่ยม</h4>
+    <p>ถ้าเริ่มจากศิลป์ เกมจะไม่มีวันเล่นได้ คุณจะเสียเวลาไปกับการปรับดีไซน์ของสิ่งที่ยังไม่มีใครเล่น<br>
+       <span style="opacity:.7">ลำดับที่ถูก: กลไก (ตัวเลขล้วน) → ลูปหลักครบ → ค่อยใส่หน้าตา</span></p>
+  </div>
+
+  <div class="rule">
+    <h4><span class="n">3</span>ย้ายข้อมูลออกจากโค้ดตั้งแต่แรก</h4>
+    <p>ทุกอย่างที่เป็น "ตาราง" — สกิล ศัตรู เมือง สูตรเอฟเฟกต์ — ให้อยู่ในไฟล์ข้อมูล
+       ไม่งั้นจะกลายเป็น <code>switch</code> ยาว 200 บรรทัดที่แก้ทีต้องไล่อ่านทั้งก้อน<br>
+       <span style="opacity:.7">ตัดสินตอนที่มีสกิลแค่ 10 ตัว ย้ายตอนมี 100 ตัวจะแพงกว่ามาก</span></p>
+  </div>
+
+  <div class="rule">
+    <h4><span class="n">4</span>วัด FPS ก่อนจะเพิ่มอะไรก็ตาม</h4>
+    <p>คนส่วนใหญ่คิดว่าเกมช้าเพราะโมเดลเยอะ แต่ต้นทุนจริงมักเป็น
+       <b>ความละเอียดจอ</b> กับ <b>post-processing</b> ถ้าเพิ่ม poly โดยไม่วัด อาจทำให้ช้าลงทั้งที่ไม่ได้ช่วยอะไร<br>
+       <span style="opacity:.7">เพิ่มตัวนับ FPS 5 บรรทัด ก่อนเริ่มงานด้านประสิทธิภาพ</span></p>
+  </div>
+
+  <div class="rule">
+    <h4><span class="n">5</span>เสียงสำคัญกว่าการ์ตูนมาก</h4>
+    <p>เสียงถูกที่สุดในการทำให้เกม "รู้สึกได้" เสียง 5 รายการที่ถูกที่
+       เหมือนกับการทำภาพ 50 ชิ้นที่ผิด ยิ่งกว่า ควรใส่เสียงตั้งแต่ช่วงที่เกมยังเป็นก้อนสี่เหลี่ยม<br>
+       <span style="opacity:.7">ClanBattle ยังไม่มีเสียงเลย เป็นช่องว่างที่ใหญ่ที่สุดของโปรเจกต์</span></p>
+  </div>
+</section>
+
+<section id="map">
+  <h2>🗺️ แผนภาพ 9 เฟส</h2>
+  <p class="lead">แต่ละเฟสต้อง <b>เล่นได้จริง</b> ก่อนขึ้นเฟสถัดไป ไม่ใช่แค่ "โค้ดครบ"</p>
+
+  <div class="map">
+    <a class="step" href="#p0"><span class="no">00</span><span class="t">วางฐาน<span>Foundation — ขอบเขต สไตล์ เทคสแท็ค โครงโปรเจกต์</span></span><span class="st st-done">เสร็จ</span></a>
+    <div class="arrow">↓</div>
+    <a class="step" href="#p1"><span class="no">01</span><span class="t">เกมเล่นได้ (ก้อนสี่เหลี่ยม)<span>Core Loop — แผนที่ → เดินทาง → ต่อสู้ → ได้ของ</span></span><span class="st st-done">เสร็จ</span></a>
+    <div class="arrow">↓</div>
+    <a class="step" href="#p2"><span class="no">02</span><span class="t">ชั้นข้อมูล<span>Data Layer — ย้ายคอนเทนต์ออกจากโค้ด</span></span><span class="st st-wip">กำลังทำ</span></a>
+    <div class="arrow">↓</div>
+    <a class="step" href="#p3"><span class="no">03</span><span class="t">ตัวละคร + แอนิเมชัน<span>Character — โมเดล → โครงกระดูก → ท่า</span></span><span class="st st-todo">ยังไม่เริ่ม</span></a>
+    <div class="arrow">↓</div>
+    <a class="step" href="#p4"><span class="no">04</span><span class="t">VFX + ความรู้สึก<span>Feel — เอฟเฟกต์ hitstop กล้อง จังหวะ</span></span><span class="st st-todo">ยังไม่เริ่ม</span></a>
+    <div class="arrow">↓</div>
+    <a class="step" href="#p5"><span class="no">05</span><span class="t">เสียง<span>Audio — SFX ดนตรี ระบบยิงเสียง</span></span><span class="st st-todo">ยังไม่เริ่ม</span></a>
+    <div class="arrow">↓</div>
+    <a class="step" href="#p6"><span class="no">06</span><span class="t">เนื้อเรื่อง + เนื้อหา<span>Content — เควสหลัก ตัวละคร Boss</span></span><span class="st st-todo">ยังไม่เริ่ม</span></a>
+    <div class="arrow">↓</div>
+    <a class="step" href="#p7"><span class="no">07</span><span class="t">ระบบความลึก<span>Systems — Save โหมดเล่นซ้ำ</span></span><span class="st st-todo">ยังไม่เริ่ม</span></a>
+    <div class="arrow">↓</div>
+    <a class="step" href="#p8"><span class="no">08</span><span class="t">ปิดเกม<span>Ship — เทสต์ 60fps มือถือ เก็บงาน</span></span><span class="st st-todo">ยังไม่เริ่ม</span></a>
+  </div>
+</section>
+
+<section id="tasks">
+  <h2>📋 การ์ดงาน</h2>
+  <p class="lead">แต่ละใบมี: เหตุผลที่ต้องทำ · สิ่งที่ต้องมีก่อน · ไฟล์ที่เกี่ยวข้อง · เวลาโดยประมาณ · สถานะ</p>
+
+  <h3 id="p0">เฟส 0 · วางฐาน <span style="color:var(--ok);font-size:14px">✅ เสร็จ</span></h3>
+
+  <div class="card t-done">
+    <div class="ch"><span class="id">0.1</span><h4>ตัดสินใจขอบเขตและสไตล์<small>Scope &amp; style — ตัดสินก่อนเขียนโค้ดบรรทัดแรก</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">ถ้าไม่กำหนดขอบเขต เกมจะขยายไม่มีวันจบ <b>เขียนขอบเขต 1 หน้า</b> แล้วยึดกับมัน</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">—</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">1–2 วัน</span></div>
+    </div>
+  </div>
+
+  <div class="card t-done">
+    <div class="ch"><span class="id">0.2</span><h4>เลือกเทคสแท็ค<small>React + TypeScript + Vite + Three.js + Tailwind</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">React จัดการ UI เกม (เมนู แผง HP) · Three.js ทำ 3D · Tailwind เร็วกว่าเขียน CSS เองมาก</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">0.1</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">1 วัน</span></div>
+    </div>
+  </div>
+
+  <div class="card t-done">
+    <div class="ch"><span class="id">0.3</span><h4>ตั้งค่าโปรเจกต์ + .gitignore<small>Scaffold, git, tsconfig strict</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">เปิด <code>strict</code> ตั้งแต่แรก จะได้ไม่ต้องมาแก้บั๊กทีหลังเป็นร้อยจุด</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">0.2</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">ครึ่งวัน</span></div>
+    </div>
+  </div>
+
+  <h3 id="p1">เฟส 1 · เกมเล่นได้ด้วยก้อนสี่เหลี่ยม <span style="color:var(--ok);font-size:14px">✅ เสร็จ</span></h3>
+
+  <div class="card t-done">
+    <div class="ch"><span class="id">1.1</span><h4>แผนที่ + การเดินทาง<small>Map graph — เมือง/จุดต่าง ๆ เดินไปเรื่อย ๆ</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">ลูปหลักของ RPG ปาร์ตี้คือ "เดินทาง → เจออะไร" ต้องเล่นได้ก่อนสนามรบ</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">0.3</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">3–5 วัน</span></div>
+    </div>
+  </div>
+
+  <div class="card t-done">
+    <div class="ch"><span class="id">1.2</span><h4>ระบบต่อสู้เทิร์นเทิร์น<small>ATB battle — เลือกท่า คำนวณดาเมจ สถานะผิดปกติ</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">หัวใจของเกม ต้องทำให้ครบก่อนของสวยงาม</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">0.3</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">1–2 สัปดาห์</span></div>
+    </div>
+  </div>
+
+  <div class="card t-done">
+    <div class="ch"><span class="id">1.3</span><h4>ความคืบหน้า + เควส + อุปกรณ์<small>XP, levels, quests, gear, shop</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">ต้องมี "เป้าหมาย" ให้ผู้เล่นไล่ ไม่งั้นเล่น 5 นาทีก็เบื่อ</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">1.2</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">1 สัปดาห์</span></div>
+    </div>
+  </div>
+
+  <h3 id="p2">เฟส 2 · ชั้นข้อมูล <span style="color:var(--wip);font-size:14px">◐ กำลังทำ</span></h3>
+
+  <div class="card t-wip">
+    <div class="ch"><span class="id">2.1</span><h4>ย้ายสูตรเอฟเฟกต์ออกจากโค้ด<small>FX recipes → data</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">เดิมเป็น <code>switch</code> 200 บรรทัด ต้องไล่อ่านทั้งก้อนถึงจะเข้าใจสกิลเดียว</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">1.2</span></div>
+      <div class="row"><span class="k">📁 ไฟล์</span><span class="v"><code>src/data/fx/</code> — types · primitives · recipes · features · index</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">2–3 วัน</span></div>
+    </div>
+    <div class="warn">✅ <b>เสร็จแล้ว</b> — <code>vfx.ts</code> ลดจาก 410 → 203 บรรทัด มี 32 recipes · 52 primitives · 5 features<br>
+      ⚠️ ยังไม่ปิดงาน: ต้องเล่นทดสอบจริงว่า expression อย่าง <code>$T</code> ถูก resolve ครบ และผูก 5 features เข้ากับสกิลจริง</div>
+  </div>
+
+  <div class="card t-todo">
+    <div class="ch"><span class="id">2.2</span><h4>แยกไฟล์สกิล + อาชีพ + ศัตรู<small>Split data files</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">ไฟล์เดียวยาว 480 บรรทัด แก้ทีเดียวชนกันเองบ่อย</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">2.1</span></div>
+      <div class="row"><span class="k">📁 ไฟล์</span><span class="v"><code>src/data/skills.ts</code> · <code>classes.ts</code> · <code>enemies.ts</code></span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">2–3 วัน</span></div>
+    </div>
+  </div>
+
+  <h3 id="p3">เฟส 3 · ตัวละคร + แอนิเมชัน <span style="color:var(--todo);font-size:14px">⬜ ยังไม่เริ่ม — เฟสสำคัญที่สุด</span></h3>
+
+  <div class="card">
+    <div class="ch"><span class="id">3.1</span><h4>โมเดลตัวละครที่ดีขึ้น<small>Better models — ยังประกอบชิ้นส่วนได้</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">เดิมใช้ primitive หยาบ ๆ ต้องทำก่อนกระดูก เพราะถ้าเปลี่ยนไปใช้ skinning ทีหลัง โมเดลใหม่ต้องเข้ากรอบกระดูกใหม่</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">2.2</span></div>
+      <div class="row"><span class="k">📁 ไฟล์</span><span class="v"><code>src/three/models.ts</code> — <code>makeHero()</code> · <code>makeMonster()</code></span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">3–7 วัน</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><span class="id">3.2</span><h4>โครงกระดูก + Skinning<small>Skeleton &amp; SkinnedMesh</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">เดิมขยับโดยหมุนชิ้นส่วนแยกกัน ขาจะเหลวเป็นตัว ต้องมีโครงกระดูกเพื่อให้ขยับเป็นเนื้อเดียว</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">3.1</span></div>
+      <div class="row"><span class="k">📁 ไฟล์</span><span class="v"><code>src/three/rig.ts</code> — ใหม่</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">4–7 วัน</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><span class="id">3.3</span><h4>ไฟล์ท่า + การผสมท่า<small>Animation clips &amp; blending</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v"><b>anticipation + follow-through</b> คือสิ่งที่ทำให้การตีดูมีน้ำหนัก ไม่ใช่ความสวยของเอฟเฟกต์</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">3.2</span></div>
+      <div class="row"><span class="k">📁 ไฟล์</span><span class="v"><code>src/three/anim.ts</code> — ใหม่ · <code>src/three/anim/*.ts</code> — ท่าต่าง ๆ</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">5–10 วัน</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><span class="id">3.4</span><h4>ผูกเอฟเฟกต์เข้ากับเฟรมของท่า<small>Retime VFX to animation</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">�� เหตุผล</span><span class="v">ตอนนี้ VFX ยิงตามเวลาเท่านั้น พอมีท่าจริงต้องยิงตาม "จังหวะที่แขนกวาดถึง" แทน</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">3.3 + 2.1</span></div>
+      <div class="row"><span class="k">📁 ไฟล์</span><span class="v"><code>src/data/fx/recipes.ts</code> · <code>src/three/BattleWorld.ts</code></span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">2–4 วัน</span></div>
+    </div>
+  </div>
+
+  <h3 id="p4">เฟส 4 · VFX + ความรู้สึก <span style="color:var(--todo);font-size:14px">⬜ ยังไม่เริ่ม</span></h3>
+
+  <div class="card">
+    <div class="ch"><span class="id">4.1</span><h4>วัด FPS ก่อนทำอะไรทั้งสิ้น<small>Measure first</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">กฎข้อ 4 — ต้นทุนจริงมักเป็นความละเอียดจอกับ post ไม่ใช่จำนวนโมเดล</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">3.4</span></div>
+      <div class="row"><span class="k">📁 ไฟล์</span><span class="v"><code>src/three/BattleWorld.ts</code> — เพิ่มตัวนับใน loop</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">15 นาที</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><span class="id">4.2</span><h4>Primitive ใหม่ 8 ตัว<small>groundDecal · crescent · shockRings · trailRibbon · chargeAura · shardBurst · lightShaft · impactFrame</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">ชิ้นเดียวนี้ทำให้ 108 สกิลดูดีขึ้นพร้อมกัน โดยไม่ต้องแตะสกิลไหนเลย</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">2.1</span></div>
+      <div class="row"><span class="k">📁 ไฟล์</span><span class="v"><code>src/data/fx/primitives.ts</code></span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">3–5 วัน</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><span class="id">4.3</span><h4>ความรู้สึกการโดน<small>Hitstop · camera shake · flash</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">hitstop 40 มิลลิวินาทีแรกที่โดนสเปกต์ให้เกม "หยุดแล้วกระแทก" เป็นเทคนิคที่ถูกที่สุดในเกม</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">3.4</span></div>
+      <div class="row"><span class="k">📁 ไฟล์</span><span class="v"><code>src/data/fx/recipes.ts</code> — ฟิลด์ <code>feel</code></span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">2–3 วัน</span></div>
+    </div>
+  </div>
+
+  <h3 id="p5">เฟส 5 · เสียง <span style="color:var(--todo);font-size:14px">⬜ ยังไม่เริ่ม — ช่องว่างที่ใหญ่ที่สุดของโปรเจกต์</span></h3>
+
+  <div class="card">
+    <div class="ch"><span class="id">5.1</span><h4>ระบบยิงเสียง<small>Audio manager — pool, volume, mute</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">ต้องมีระบบก่อนเพิ่มเสียง ทุกชิ้นต้องเล่นซ้อนกันได้โดยไม่กิน CPU</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">1.2</span></div>
+      <div class="row"><span class="k">📁 ไฟล์</span><span class="v"><code>src/audio/index.ts</code> — ใหม่</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">1–2 วัน</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><span class="id">5.2</span><h4>SFX หลัก<small>ตี · เวทย์ 8 ธาตุ · ตาย · ชนะ · เมนู</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">15–20 เสียงพอทำให้เกมรู้สึกมีชีวิต มากกว่าการทำเอฟเฟกต์เพิ่มอีก 10 ชนิด</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">5.1</span></div>
+      <div class="row"><span class="k">📁 ไฟล์</span><span class="v"><code>public/audio/</code> · ผูกใน <code>recipes.ts</code></span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">3–5 วัน (รวมหาเสียงฟรี)</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><span class="id">5.3</span><h4>ดนตรีประกอบ<small>BGM ตามสถานการณ์ — เมนู / สนามรบ / ปรอน</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">ดนตรีคือสิ่งที่ทำให้เกมน่าเล่นซ้ำมากที่สุด</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">5.1</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">2–3 วัน</span></div>
+    </div>
+  </div>
+
+  <h3 id="p6">เฟส 6 · เนื้อเรื่อง + เนื้อหา <span style="color:var(--todo);font-size:14px">⬜ ยังไม่เริ่ม</span></h3>
+
+  <div class="card">
+    <div class="ch"><span class="id">6.1</span><h4>โครงเรื่องหลัก<small>Main story — เป้าหมายระยะยาว</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">RPG ที่ไม่มีเรื่องคือเกมที่เล่นจบใน 30 นาที</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">1.3</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">1–2 สัปดาห์</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><span class="id">6.2</span><h4>Boss + กลไกพิเศษ<small>ต้องมีเฟส ไม่ใช่แค่เลือดเยอะ</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">Boss ที่ดีต้องสอนผู้เล่นใช้สิ่งที่เรียนมา</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">3.4</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">1 สัปดาห์ / ตัว</span></div>
+    </div>
+  </div>
+
+  <h3 id="p7">เฟส 7 · ระบบความลึก <span style="color:var(--todo);font-size:14px">⬜ ยังไม่เริ่ม</span></h3>
+
+  <div class="card">
+    <div class="ch"><span class="id">7.1</span><h4>Save / Load<small>ตอนนี้เก็บแค่คะแนนสูงสุด — เล่นใหม่ทุกครั้ง</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">เกมที่ยาว 10 ชั่วโมง ผู้เล่นต้องบันทึกได้ ไม่งั้นเล่นซ้ำไม่ได้</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">1.3</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">2–3 วัน</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><span class="id">7.2</span><h4>โหมดเล่นซ้ำ (Roguelite loop)<small>รอบใหม่ = ท้าทายใหม่ · เลือกอาชีพคนละอัน</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">นี่คือสิ่งที่ทำให้เกมนี้เล่นซ้ำได้ ไม่ใช่เล่นจบแล้วจบ</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">7.1 + 3.4</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">1 สัปดาห์</span></div>
+    </div>
+  </div>
+
+  <h3 id="p8">เฟส 8 · ปิดเกม <span style="color:var(--todo);font-size:14px">⬜ ยังไม่เริ่ม</span></h3>
+
+  <div class="card">
+    <div class="ch"><span class="id">8.1</span><h4>เทสต์ 60fps ทุกอุปกรณ์<small>มือถือ · เดสก์ท็อป · หน้าจอใหญ่</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">60fps ต้องวัดบนอุปกรณ์จริง ไม่ใช่แค่เครื่องตัวเอง</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">4.1</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">3–5 วัน</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><span class="id">8.2</span><h4>รองรับมือถือ + Touch<small>ท่าโพสต์ ขนาด UI ความเร็วในการแตะ</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">ถ้าจะปล่อยบนเว็บ มือถือคือครึ่งหนึ่งของผู้เล่น</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">3.3</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">1 สัปดาห์</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><span class="id">8.3</span><h4>Tests + เอกสาร<small>Unit test สูตรต่อสู้ · README · deploy</small></h4></div>
+    <div class="rows">
+      <div class="row"><span class="k">📌 เหตุผล</span><span class="v">สูตรดาเมจที่พังเงียบ ๆ เจอตอนปล่อยเกมสายกว่าตอนพัฒนา</span></div>
+      <div class="row"><span class="k">✅ ต้องมีก่อน</span><span class="v">1.2</span></div>
+      <div class="row"><span class="k">⏱️ เวลา</span><span class="v">1 สัปดาห์</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="lessons">
+  <h2>⚠️ บทเรียน — ความผิดพลาดจริงที่เจอระหว่างทำ ClanBattle</h2>
+  <p class="lead">ส่วนนี้สำคัญที่สุด เพราะเป็นเรื่องที่เอกสารทั่วไปไม่บอก</p>
+
+  <div class="lesson">
+    <h4>1 · ทำกล้องแบบ FF7R ก่อนทำตัวละคร</h4>
+    <div class="what">ผล — กล้องตัดมุม 5 จังหวะต่อสกิล ผู้เล่นตามไม่ทัน เล่นแล้วบอกว่า "ไม่รู้เรื่อง"</div>
+    <div class="fix">💡 <b>บทเรียน:</b> VFX และกล้องคือ<b>ผลลัพธ์</b> ไม่ใช่<b>ฐาน</b> ต้องมีตัวละครที่เคลื่อนไหวดีก่อน</div>
+  </div>
+
+  <div class="lesson">
+    <h4>2 · ใส่เงื่อนไขเปิด/ปิด แต่ไม่ไล่จุดอ้างอิงให้ครบ</h4>
+    <div class="what">ผล — เปิดระบบกล้องใหม่แล้วลืมไปแก้จุดที่เรียกค่าเก่า บั๊กตอนรันจริง ต้องไล่กลับไปหา 3 จุด</div>
+    <div class="fix">💡 <b>บทเรียน:</b> ถ้าแก้โค้ดแบบ "สลับโหมด" ให้ไล่ <code>grep</code> ทุกจุดที่เกี่ยวข้อง <b>ก่อน</b> ประกาศว่าเสร็จ</div>
+  </div>
+
+  <div class="lesson">
+    <h4>3 · ค่า "สูงสุด" ของเอฟเฟกต์ที่ไม่ได้คิดเรื่องสเกล</h4>
+    <div class="what">ผล — แถบดำ letterbox ตั้งค่าเป็น <code>1.0</code> คิดเป็น 100% ของความสูงจอ → จอดำทั้งหน้า ฉากเปิดและฉากจบหายไปทั้งคู่</div>
+    <div class="fix">💡 <b>บทเรียน:</b> ค่า 1.0 ไม่ได้แปลว่า "ปกติ" เสมอไป ต้องคิดว่ามันครอบคลุมกี่ % ของสิาดจอ — และควรมี <b>clamp ชั้นที่สอง</b> เสมอ</div>
+  </div>
+
+  <div class="lesson">
+    <h4>4 · เขียนไฟล์ใหญ่ในคำสั่งเดียว</h4>
+    <div class="what">ผล — heredoc 400 บรรทัดค้างเทอร์มินัล งานหายทิ้ง ต้องมาแก้ทีหลัง</div>
+    <div class="fix">💡 <b>บทเรียน:</b> เขียนทีละก้อน 100–200 บรรทัด ตรวจผลทุกก้อน ดีกว่าเขียนครั้งเดียวแล้วพังทั้งก้อน</div>
+  </div>
+
+  <div class="lesson">
+    <h4>5 · คาดเดาสเปกแทนที่จะวัด</h4>
+    <div class="what">ผล — เพิ่ม/ลดกล้องเรื่อย ๆ โดยไม่รู้ว่าต้นทุนอยู่ตรงไหนจริง ทำเวลาไปเปล่าหลายรอบ</div>
+    <div class="fix">💡 <b>บทเรียน:</b> ใส่ตัวนับ FPS 5 บรรทัด <b>ก่อน</b> เริ่มงานด้านประสิทธิภาพ ค่า 1 ครั้งช่วยได้มากกว่าการเดา 10 ครั้ง</div>
+  </div>
+</section>
+
+<section id="ref">
+  <h2>📊 ตารางอ้างอิง</h2>
+
+  <h3>เทคสแท็ค</h3>
+  <div class="tw"><table>
+    <tr><th>เครื่องมือ</th><th>ใช้ทำอะไร</th><th>ทำไมถึงเลือก</th></tr>
+    <tr><td><b>React</b></td><td>UI เกม — เมนู แผง HP แถบเลือดลอยตัว</td><td>ยึดหลักการเดียวกับเว็บทั่วไป</td></tr>
+    <tr><td><b>TypeScript</b></td><td>ชนิดข้อมูลทั้งหมด</td><td>สูตรดาเมจพังตอนคอมไพล์ ไม่ใช่ตอนเล่น</td></tr>
+    <tr><td><b>Three.js</b></td><td>เรนเดอร์ 3D ทั้งฉาก</td><td>เบา คุมได้เต็มที่ เหมาะกับสนามรบ</td></tr>
+    <tr><td><b>Vite</b></td><td>บันดัล + dev server</td><td>เร็วกว่า webpack มาก</td></tr>
+    <tr><td><b>Tailwind</b></td><td>สไตล์ UI</td><td>เขียน UI เกมเร็วกว่ามานั่งเขียน CSS เอง</td></tr>
+  </table></div>
+
+  <h3>โครงสร้างโฟลเดอร์</h3>
+  <div class="tw"><table>
+    <tr><th>โฟลเดอร์</th><th>เก็บอะไร</th><th>ห้ามมี</th></tr>
+    <tr><td><code>game/</code></td><td>ตรรกะล้วน ไม่พึ่ง React</td><td>DOM, three.js</td></tr>
+    <tr><td><code>data/</code></td><td>ทุกอย่างที่เป็น "ตาราง"</td><td>ตรรกะ</td></tr>
+    <tr><td><code>three/</code></td><td>ฉาก 3D โมเดล เอฟเฟกต์ กล้อง</td><td>React</td></tr>
+    <tr><td><code>components/</code></td><td>React UI</td><td>สูตรเกม</td></tr>
+  </table></div>
+  <p class="lead">กติกาคือ <b>ชั้นล่างห้ามรู้จักชั้นบน</b> — <code>game/</code> ต้องทดสอบได้โดยไม่ต้องเปิดเบราว์เซอร์</p>
+
+  <h3>ประมาณเวลา (คนเดียว)</h3>
+  <div class="tw"><table>
+    <tr><th>เฟส</th><th>งาน</th><th>เวลา</th></tr>
+    <tr><td>0–1</td><td>ฐาน + เกมเล่นได้</td><td>3–4 สัปดาห์</td></tr>
+    <tr><td>2</td><td>ชั้นข้อมูล</td><td>3–5 วัน</td></tr>
+    <tr><td><b>3</b></td><td><b>ตัวละคร + แอนิเมชัน</b></td><td><b>2–4 สัปดาห์</b></td></tr>
+    <tr><td>4</td><td>VFX + ความรู้สึก</td><td>1–2 สัปดาห์</td></tr>
+    <tr><td>5</td><td>เสียง</td><td>1 สัปดาห์</td></tr>
+    <tr><td>6–7</td><td>เนื้อเรื่อง + ระบบ</td><td>3–4 สัปดาห์</td></tr>
+    <tr><td>8</td><td>ปิดเกม</td><td>2–3 สัปดาห์</td></tr>
+    <tr><td colspan="2" style="text-align:right"><b>รวม</b></td><td><b>4–6 เดือน</b></td></tr>
+  </table></div>
+
+  <h3>ClanBattle ตอนนี้</h3>
+  <div class="tw"><table>
+    <tr><th>หัวข้อ</th><th>สถานะ</th></tr>
+    <tr><td>สกิล / อาชีพ / ศัตรู</td><td>✅ พร้อม — 108 สกิล · 6 อาชีพ (พร้อมเลื่อนขั้น 2) · 12 ศัตรู · 45 อุปกรณ์</td></tr>
+    <tr><td>แผนที่</td><td>✅ พร้อม — 26 เมืองไทยจริง พิกัดจริง · 36 เส้นทาง</td></tr>
+    <tr><td>ระบบต่อสู้ / เควส / ร้าน / พันธมิตร</td><td>✅ พร้อม — 10 พันธมิตร · 5 สกุลเมือง · 5 ธาตุแยกเสียง</td></tr>
+    <tr><td>ชั้นข้อมูล VFX</td><td>◐ เสร็จ 2.1 (32 recipes · 52 primitives) · เหลือเชื่อม features เข้ากับสกิลจริง</td></tr>
+    <tr><td>ตัวละคร + แอนิเมชัน</td><td>⬜ ยังไม่เริ่ม — ก้อนสี่เหลี่ยมหมุนชิ้นส่วน</td></tr>
+    <tr><td>เสียง</td><td>⬜ ไม่มีเลย</td></tr>
+    <tr><td>Save game</td><td>⬜ เก็บแค่คะแนนสูงสุด</td></tr>
+    <tr><td>เนื้อเรื่อง / Boss</td><td>⬜ ไม่มี</td></tr>
+  </table></div>
+</section>
+
+<section id="links">
+  <h2>🔗 ลิงก์อ้างอิงภายนอก</h2>
+  <div class="links">
+    <a class="lk" href="https://threejs.org/docs/" target="_blank" rel="noreferrer"><b>เอกสาร Three.js</b><span>API ทางการ — เช็คสัญญาของฟังก์ชันที่ใช้</span></a>
+    <a class="lk" href="https://threejs.org/examples/" target="_blank" rel="noreferrer"><b>ตัวอย่าง Three.js</b><span>มีตัวอย่าง skinning, post-processing, loader</span></a>
+    <a class="lk" href="https://github.com/mrdoob/three.js/wiki/Threejs-Optimization-tips" target="_blank" rel="noreferrer"><b>Optimization Tips</b><span>คู่มือลด draw call และ poly</span></a>
+    <a class="lk" href="https://www.iquilezles.org/articles/pingpong/" target="_blank" rel="noreferrer"><b>เทคนิค hitstop / screen shake</b><span>สูตรการทำเฟรมหยุดแบบมีน้ำหนัก</span></a>
+    <a class="lk" href="https://docs.pmnd.rs/react-three-fiber" target="_blank" rel="noreferrer"><b>React Three Fiber</b><span>ทางเลือกถ้าอยากเขียน 3D ในโค้ด React</span></a>
+    <a class="lk" href="https://freesound.org" target="_blank" rel="noreferrer"><b>Freesound</b><span>เสียงฟรีสำหรับเอฟเฟกต์ — CC license</span></a>
+    <a class="lk" href="https://opengameart.org" target="_blank" rel="noreferrer"><b>OpenGameArt</b><span>เสียงและกราฟิกฟรีสำหรับเกม</span></a>
+    <a class="lk" href="https://web.dev/articles/vitals" target="_blank" rel="noreferrer"><b>Web Vitals</b><span>เกณฑ์ประสิทธิภาพเว็บที่ควรตั้งเป้า</span></a>
+  </div>
+</section>
+
+<section id="tips">
+  <h2>💡 เคล็ดลับที่ไม่มีในบทเรียน</h2>
+
+  <div class="tip">
+    <h4>กันบั๊กตอนรีเฟกเตอร์ (HMR)</h4>
+    <p>เกมที่มี state ในตัวแปรนอก React มักพังตอน hot-reload ให้มี key ที่เปลี่ยนตามเวอร์ชันใน <code>&lt;App&gt;</code>
+       เช่น <code>key={__DEV_VERSION__}</code> แล้วเก็บ state ที่ต้องรอดไว้ฝั่ง <code>localStorage</code> แทนหน่วยความจำ</p>
+  </div>
+
+  <div class="tip">
+    <h4>เอฟเฟกต์ให้ชัดที่สุดตอนสังเกต</h4>
+    <p>ทุกเอฟเฟกต์ควร <b>กระพริบสั้น ๆ 2 เฟรม</b> แล้วหายไปเร็ว สิ่งที่ทำให้เอฟเฟกต์ดูอ่อนคือ
+       "ค้างนานเกินไป" และ "ขนาดใหญ่เกินสัดส่วน" ไม่ใช่รายละเอียดที่ขาด</p>
+  </div>
+
+  <div class="tip">
+    <h4>แยก "เวลาเกม" ออกจาก "เวลาจริง" เสมอ</h4>
+    <p>เกมที่มีปุ่มเร่งเวลา 1x/2x/4x ต้องคำนวณดาเมจ/เวลาแยกสองชั้น
+       <b>fixed timestep</b> สำหรับตรรกะ · <b>delta</b> สำหรับเอฟเฟกต์ ถ้าใช้ delta เดียวกันหมด เกมจะเพี้ยนเมื่อเปลี่ยนความเร็ว</p>
+  </div>
+
+  <div class="tip">
+    <h4>ทดสอบสูตรดาเมจแบบไม่ต้องเปิดเกม</h4>
+    <p>แยกสูตรออกเป็นฟังก์ชันบริสทิ์ที่รับตัวเลข คืนค่าตัวเลข แล้วเขียน test ตารางเลขเทียบ
+       จะเร็วกว่าการเปิดเกมเล่นดูสิบรอบมาก และจับบั๊กได้ตอนยังไม่ปล่อย</p>
+  </div>
+
+  <div class="tip">
+    <h4>วัดเวลาเฟรม ไม่ใช่นาฬิกา</h4>
+    <p>ถ้าตัวแปรความเร็วเกมไหลผิดปกติ ให้หยุดเวลาทั้งหมดแล้วดูว่าตัวละครยังขยับตามไหม
+       ถ้าหยุดแล้วยังขยับ แปลว่ามีบางอย่างอัปเดตตำแหน่งจากเวลาแทนจาก animation</p>
+  </div>
+
+  <div class="tip">
+    <h4>commit ทีละเรื่องเดียว</h4>
+    <p>เขียนข้อความ commit ให้บอกได้ว่า<b>แก้อะไรและทำไม</b> ไม่ใช่แค่ "update"
+       เวลาไล่ย้อนกลับบั๊กจะได้เร็วขึ้นมาก เขียน commit ให้เหมือนบันทึกส่วนตัว</p>
+  </div>
+</section>
+
+<footer>
+  <p><b>ROADMAP</b> — เอกสารนี้ใช้เป็นแนวทางสร้างเกม RPG ปาร์ตี้ 3D ได้กับโปรเจกต์ใหม่ทุกแบบ
+     เรียบเรียงจากประสบการณ์จริงในโปรเจกต์ ClanBattle</p>
+  <p style="margin-top:8px;opacity:.7">React · TypeScript · Three.js · Vite — อัปเดต 29 กันยายน 2026</p>
+</footer>
+
+</div>
+</body>
+</html>
