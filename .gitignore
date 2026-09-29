@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Source artwork (768x1376 PNGs, ~18MB)
+# Runtime portraits are inlined as base64 in src/game/portraitData.ts,
+# so these originals are not needed to build or run the game.
+src/assets/raw/
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

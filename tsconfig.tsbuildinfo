@@ -1,1 +1,0 @@
-{"root":["./src/App.tsx","./src/main.tsx","./src/components/BattleScreen.tsx","./src/components/FxLayer.tsx","./src/components/MapScreen.tsx","./src/components/Panels.tsx","./src/components/StartScreen.tsx","./src/game/data.ts","./src/game/engine.ts","./src/game/fx.ts","./src/game/store.ts","./src/game/types.ts","./src/utils/cn.ts","./vite.config.ts"],"version":"5.9.3"}
