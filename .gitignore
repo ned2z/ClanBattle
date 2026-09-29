@@ -5,6 +5,11 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Scratch dirs used by throwaway verification scripts
+.smoke/
+.tt/
+.tmp/
+
 # Source artwork (768x1376 PNGs, ~18MB)
 # Runtime portraits are inlined as base64 in src/game/portraitData.ts,
 # so these originals are not needed to build or run the game.
