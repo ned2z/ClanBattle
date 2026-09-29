@@ -3,7 +3,10 @@ import { CITY, CLASSES, EQUIPS, ITEMS, SKILL, CITY_INFO, PERK_INFO } from '../ga
 import { makeEquip, memberStats, pick, priceOf as basePrice, randomCommon } from '../game/engine';
 import { fx } from '../game/fx';
 import { EquipIcon, ItemIcon, RarityTag, SkillIcon } from './Icons';
-import { rankOf } from '../game/store';
+import { MarketPanel } from './MarketPanel';
+import { add as addItem, count } from '../game/inv';
+import { advanceTime, rankOf, restAtInn } from '../game/store';
+import { INN_WAKE, TRAIN_MINUTES, fmtDuration, fmtTime } from '../game/time';
 import type { EquipItem, GameState } from '../game/types';
 
 type Update = (fn: (g: GameState) => void) => void;
@@ -36,7 +39,7 @@ const coinFx = (e?: { clientX: number; clientY: number }) => { if (e) fx.burst(e
 
 // ------------------------------------------------------------------ CITY
 export function CityPanel({ game, update, onClose, toast }: { game: GameState; update: Update; onClose: () => void; toast: (s: string) => void }) {
-  const [tab, setTab] = useState<'quest' | 'shop' | 'inn' | 'train'>('quest');
+  const [tab, setTab] = useState<'quest' | 'shop' | 'market' | 'inn' | 'train'>('quest');
   const city = CITY[game.location];
   const info = CITY_INFO[city.id];
   const priceOf = (g: GameState, p: number, kind: 'gear' | 'item' | 'other' = 'other') => Math.round(basePrice(g, p) * (info.perk === kind ? (kind === 'gear' ? 0.75 : 0.65) : 1));
@@ -55,7 +58,7 @@ export function CityPanel({ game, update, onClose, toast }: { game: GameState; u
         <div className="min-w-0 flex-1"><div className="font-bold" style={{ color: info.color }}>{info.title}</div><div className="text-[13px] text-stone-300">{info.desc}</div></div>
         <div className="shrink-0 rounded-lg bg-black/40 px-2 py-1 text-center text-[12px]"><div className="text-lg">{PERK_INFO[info.perk].icon}</div><div className="font-bold text-amber-200">{PERK_INFO[info.perk].name}</div><div className="text-lime-300">{PERK_INFO[info.perk].desc}</div></div>
       </div>
-      <Tabs tabs={[['quest', '📜 เควส'], ['shop', '🛒 ร้านค้า'], ['inn', '🛏 โรงเตี๊ยม'], ['train', '📖 สำนักฝึก']]} value={tab} onChange={setTab} />
+      <Tabs tabs={[['quest', '📜 เควส'], ['shop', '🛒 ร้านค้า'], ['market', '🏦 ตลาด'], ['inn', '🛏 โรงเตี๊ยม'], ['train', '📖 สำนักฝึก']]} value={tab} onChange={setTab} />
       <div className="mb-2 text-right text-sm">🪙 <b className="text-amber-300">{game.gold}</b>{game.members.some((m) => m.cls === 'merchant') && <span className="ml-2 text-xs text-lime-300">(พ่อค้าลด 15%)</span>}</div>
 
       {tab === 'quest' && (
@@ -85,9 +88,9 @@ export function CityPanel({ game, update, onClose, toast }: { game: GameState; u
           <div className="grid grid-cols-2 gap-2">
             {ITEMS.map((it) => (
               <button key={it.id} className="flex items-center gap-2 rounded-xl bg-black/30 p-2 text-left transition hover:bg-black/50 active:scale-95 disabled:opacity-40" disabled={game.gold < priceOf(game, it.price, 'item')}
-                onClick={(e) => { update((g) => { g.gold -= priceOf(g, it.price, 'item'); g.inv[it.id]++; }); coinFx(e); }}>
+                onClick={(e) => { update((g) => { g.gold -= priceOf(g, it.price, 'item'); addItem(g.inv, it.id); }); coinFx(e); }}>
                 <ItemIcon id={it.id} size={40} />
-                <span className="min-w-0 flex-1"><span className="block text-sm font-bold">{it.name} <span className="text-stone-400">x{game.inv[it.id]}</span></span><span className="block text-[13px] text-stone-400">{it.desc}</span></span>
+                <span className="min-w-0 flex-1"><span className="block text-sm font-bold">{it.name} <span className="text-stone-400">x{count(game.inv, it.id)}</span></span><span className="block text-[13px] text-stone-400">{it.desc}</span></span>
                 <span className="text-sm text-amber-300">{priceOf(game, it.price, 'item')}</span>
               </button>
             ))}
@@ -117,6 +120,8 @@ export function CityPanel({ game, update, onClose, toast }: { game: GameState; u
         </div>
       )}
 
+      {tab === 'market' && <MarketPanel game={game} update={update} toast={toast} />}
+
       {tab === 'inn' && (
         <div className="space-y-3 text-center">
           <div className="text-5xl">🛏️</div>
@@ -124,16 +129,22 @@ export function CityPanel({ game, update, onClose, toast }: { game: GameState; u
           <div className="space-y-1">
             {game.members.map((m) => { const s = memberStats(m); return <div key={m.id} className="text-xs">{CLASSES[m.cls].icon} {m.name}: <span className={m.hp <= 0 ? 'text-red-400' : ''}>{m.hp}/{s.hp}</span> HP • {m.mp}/{s.mp} MP</div>; })}
           </div>
+          <div className="text-[13px] text-stone-400">ตื่นพรุ่งนี้เวลา {fmtTime(INN_WAKE)} · ปัจจุบัน {fmtTime(game.minute)}</div>
           <button className="btn btn-gold px-6 py-3 text-lg" disabled={game.gold < innCost} onClick={(e) => {
-            update((g) => { g.gold -= innCost; g.members.forEach((m) => { const s = memberStats(m); m.hp = s.hp; m.mp = s.mp; }); });
-            fx.burst(e.clientX, e.clientY, '#86efac', 40, { up: true, speed: 5, g: -0.03, life: 50 }); toast('ปาร์ตี้พักผ่อนเต็มที่! 💤');
+            update((g) => {
+              g.gold -= innCost;
+              g.members.forEach((m) => { const s = memberStats(m); m.hp = s.hp; m.mp = s.mp; m.healAt = 0; });
+              restAtInn(g);
+            });
+            fx.burst(e.clientX, e.clientY, '#86efac', 40, { up: true, speed: 5, g: -0.03, life: 50 });
+            toast(`ปาร์ตี้พักผ่อนเต็มที่! ตื่นเวลา ${fmtTime(INN_WAKE)} 💤`);
           }}>พักผ่อน ({innCost ? `${innCost} 🪙` : 'ฟรี!'})</button>
         </div>
       )}
 
       {tab === 'train' && (
         <div className="space-y-3">
-          <div className="text-sm text-stone-300">สุ่มเปลี่ยนสกิลทั่วไป (ช่องที่ 4-5) — เลือกจาก 3 ตัวเลือก • ค่าเรียน {trainCost} 🪙<br /><span className="text-[13px]">โอกาส: <b className="text-sky-400">Rare 10%</b> • <b className="text-amber-400">Legendary 4%</b> • <b className="rarity-unique-text">Unique 1%</b></span></div>
+          <div className="text-sm text-stone-300">สุ่มเปลี่ยนสกิลทั่วไป (ช่องที่ 4-5) — เลือกจาก 3 ตัวเลือก • ค่าเรียน {trainCost} 🪙 • ใช้เวลา {fmtDuration(TRAIN_MINUTES)}<br /><span className="text-[13px]">โอกาส: <b className="text-sky-400">Rare 10%</b> • <b className="text-amber-400">Legendary 4%</b> • <b className="rarity-unique-text">Unique 1%</b></span></div>
           <MemberPicker game={game} value={who} onChange={(v) => { setWho(v); setTrainOpts(null); }} />
           <div className="space-y-2">
             {member.skills.map((sl, i) => {
@@ -157,7 +168,7 @@ export function CityPanel({ game, update, onClose, toast }: { game: GameState; u
               <div className="grid gap-2 sm:grid-cols-3">
                 {trainOpts.opts.map((id) => { const s = SKILL[id]; return (
                   <button key={id} className="rounded-xl bg-black/40 p-2 text-left transition hover:bg-black/60 active:scale-95" onClick={(e) => {
-                    update((g) => { const m = g.members.find((x) => x.id === trainOpts.mid)!; m.skills[trainOpts.slot] = { id, enabled: true, level: 1 }; });
+                    update((g) => { const m = g.members.find((x) => x.id === trainOpts.mid)!; m.skills[trainOpts.slot] = { id, enabled: true, level: 1 }; advanceTime(g, TRAIN_MINUTES); });
                     fx.burst(e.clientX, e.clientY, '#c084fc', 30, { speed: 5 }); toast(`${member.name} เรียนรู้ ${s.name}!`); setTrainOpts(null);
                   }}><div className="flex items-center gap-2 text-sm font-bold"><SkillIcon id={id} size={40} /> <span>{s.name}<br /><RarityTag id={id} /></span></div><div className="text-[13px] text-stone-400">{s.desc}</div><div className="text-[12px] text-sky-300">MP {s.mp} • CD {s.cd}</div></button>
                 ); })}

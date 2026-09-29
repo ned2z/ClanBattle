@@ -100,7 +100,13 @@ export interface NpcParty {
   color: string;
 }
 
-export interface Inventory { potion: number; hipotion: number; ether: number; phoenix: number }
+/**
+ * Stackable items keyed by id. A plain Record so the catalogue can grow to
+ * 400-500 entries without editing this file. Always read via `count()` in
+ * `game/inv.ts` — the project has `noUncheckedIndexedAccess` off, so a direct
+ * `inv.x` is typed `number` but is `undefined` at runtime when absent.
+ */
+export type Inventory = Record<string, number>;
 
 export interface Travel { path: string[]; seg: number; t: number }
 
@@ -111,6 +117,8 @@ export interface GameState {
   fame: number;
   score: number;
   day: number;
+  /** Minute of day, 0-1439. Combined with `day` this drives the clock, market prices and daily refreshes. */
+  minute: number;
   location: string;
   inv: Inventory;
   quests: Quest[];
@@ -118,6 +126,10 @@ export interface GameState {
   npcs: NpcParty[];
   stats: { kills: number; wins: number; battles: number; npcWins: number; quests: number };
   settings: { autoPotion: boolean; autoRevive: boolean };
+  /** Day the NPC standings last drifted. Keeps rivals from growing on every map node walked. */
+  lastDriftDay?: number;
+  /** Day the city quest boards were last rerolled. */
+  lastQuestDay?: number;
   reachedTop: boolean;
   travel: Travel | null;
   bag: EquipItem[];

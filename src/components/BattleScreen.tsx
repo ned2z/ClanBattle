@@ -389,6 +389,16 @@ export default function BattleScreen({ game, group, paused, onFinish, onContinue
                     <div className="rounded-lg bg-black/40 p-2">🏅 คะแนน <b className="text-lime-300">+{summary.score}</b></div>
                   </div>
                   {summary.drops.map((d) => <div key={d.iid} className="pop-in mt-2 rounded-lg border px-3 py-2 text-sm" style={{ borderColor: RARITY[d.rarity].color, color: RARITY[d.rarity].color, background: 'rgba(0,0,0,.4)' }}>🎁 ได้รับไอเทม: {d.icon} <b>{d.name}</b> <span className="text-xs">({RARITY[d.rarity].name})</span></div>)}
+                  {summary.mats.length > 0 && (
+                    <div className="mt-2 rounded-lg border border-lime-700/60 bg-lime-950/40 px-3 py-2 text-sm">
+                      <div className="mb-1 text-[13px] text-lime-300">🪨 ได้วัตถุดิบ (นำไปขายที่ตลาดได้)</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {summary.mats.map((m, i) => (
+                          <span key={i} className="pop-in rounded bg-black/40 px-2 py-0.5 text-[13px] text-lime-200">{m.icon} {m.name} <b>x{m.qty}</b></span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {summary.levelUps.length > 0 && <div className="mt-2 space-y-0.5 text-sm text-lime-300">{summary.levelUps.map((l, i) => <div key={i} className="pop-in" style={{ animationDelay: `${i * 0.1}s` }}>⬆ {l.name} เลเวลอัป! Lv{l.level} <span className="text-amber-300">(+1 SP)</span></div>)}</div>}
                   {summary.questsDone.length > 0 && <div className="mt-2 space-y-0.5 text-sm text-sky-300">{summary.questsDone.map((q, i) => <div key={i}>📜 สำเร็จ: {q}</div>)}</div>}
                   {summary.becameTop && <div className="shine-text mt-2 text-lg font-extrabold">👑 คุณคือปาร์ตี้อันดับ 1 แห่งสยาม!</div>}

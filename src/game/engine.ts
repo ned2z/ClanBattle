@@ -1,6 +1,7 @@
 import {
   BASE_ULT, CITIES, CITY, CITY_INFO, CLASS2, CLASS2_OF, CLASSES, CLASS_IDS, COMMON_SKILLS, EDGES, ENEMIES, EQUIPS, MEMBER_NAMES, NODE, NODES, NPC_SEED, RARITY, SKILL, SKILL_RARITY,
 } from './data';
+import { ETHER, HIPOTION, PHOENIX, POTION, count, has as hasItem, take } from './inv';
 import type {
   ActionEvent, ClassId, EnemyGroup, EquipItem, GameState, HitResult, Member, NpcParty, Quest, Skill, Stats, Status, StatusType, Unit,
 } from './types';
@@ -412,22 +413,23 @@ function act(b: BattleState, u: Unit): ActionEvent {
   if (!forced && u.side === 'ally') {
     const dead = b.units.filter((x) => x.side === 'ally' && !x.alive);
     const hasReviveSkill = u.skills.some((s) => s.enabled && SKILL[s.id].target === 'deadAlly' && skillUsable(b, u, SKILL[s.id]));
-    if (b.settings.autoRevive && dead.length && b.inv.phoenix > 0 && !hasReviveSkill && Math.random() < 0.6) {
-      const t = dead[0]; b.inv.phoenix--; b.itemsUsed++;
+    if (b.settings.autoRevive && dead.length && hasItem(b.inv, PHOENIX) && !hasReviveSkill && Math.random() < 0.6) {
+      const t = dead[0]; take(b.inv, PHOENIX); b.itemsUsed++;
       t.alive = true; t.hp = Math.round(t.maxHp * 0.5); t.atb = 0;
       return { actor: u.uid, label: 'ขนนกการเวก', icon: '🪶', element: 'holy', kind: 'item', isSkill: true, hits: [{ uid: t.uid, heal: t.hp, revived: true }], log: `${u.name} ใช้ขนนกการเวกชุบชีวิต ${t.name}` };
     }
     const low = allies.filter((a) => a.hp / a.maxHp < 0.32).sort((a, c) => a.hp / a.maxHp - c.hp / c.maxHp)[0];
     const hasHeal = u.skills.some((s) => s.enabled && SKILL[s.id].kind === 'heal' && skillUsable(b, u, SKILL[s.id]));
-    if (b.settings.autoPotion && low && !hasHeal && (b.inv.hipotion > 0 || b.inv.potion > 0)) {
-      const hi = low.hp / low.maxHp < 0.18 && b.inv.hipotion > 0 || b.inv.potion === 0;
-      if (hi) b.inv.hipotion--; else b.inv.potion--;
+    const nBig = count(b.inv, HIPOTION), nSmall = count(b.inv, POTION);
+    if (b.settings.autoPotion && low && !hasHeal && (nBig > 0 || nSmall > 0)) {
+      const hi = (low.hp / low.maxHp < 0.18 && nBig > 0) || nSmall === 0;
+      if (hi) take(b.inv, HIPOTION); else take(b.inv, POTION);
       b.itemsUsed++;
       const r = doHeal(u, low, null, Math.round(low.maxHp * (hi ? 0.8 : 0.4)));
       return { actor: u.uid, label: hi ? 'ยาหม้อใหญ่' : 'ยาสมุนไพร', icon: hi ? '🍵' : '🧃', element: 'holy', kind: 'item', isSkill: true, hits: [r], log: `${u.name} ป้อนยาให้ ${low.name} +${r.heal}` };
     }
-    if (b.settings.autoPotion && b.inv.ether > 0 && u.mp < u.maxMp * 0.15 && u.maxMp > 50 && Math.random() < 0.5) {
-      b.inv.ether--; b.itemsUsed++;
+    if (b.settings.autoPotion && hasItem(b.inv, ETHER) && u.mp < u.maxMp * 0.15 && u.maxMp > 50 && Math.random() < 0.5) {
+      take(b.inv, ETHER); b.itemsUsed++;
       const m = Math.round(u.maxMp * 0.5); u.mp = Math.min(u.maxMp, u.mp + m);
       return { actor: u.uid, label: 'น้ำมนต์มานา', icon: '🔷', element: 'ice', kind: 'item', isSkill: true, hits: [{ uid: u.uid, mpHeal: m }], log: `${u.name} ดื่มน้ำมนต์มานา` };
     }

@@ -1,6 +1,9 @@
 import { CITY, NPC_SEED } from './data';
 import { makeCityQuests, makeEquip, makeMember, makeNpcs, memberStats, partyLevel, randomDrop, rint, uid, xpNeed } from './engine';
 import { EQUIPS, NODE, NODE_KIND_INFO } from './data';
+import { dropsOf } from '../data/economy/materials';
+import { POTION, add as addItem, prune } from './inv';
+import { INN_WAKE, START_MINUTE, addMinutes, battleMinutes, normalize } from './time';
 import type { ClassId, EnemyGroup, EquipItem, GameState, LogEntry, Member } from './types';
 import type { BattleState } from './engine';
 
@@ -18,14 +21,15 @@ export function saveHS(h: HighScore): HighScore[] {
 export function newGame(partyName: string, classes: ClassId[], names: string[]): GameState {
   const members = classes.map((c, i) => makeMember(c, names[i]));
   const g: GameState = {
-    partyName, members, gold: 150, fame: 0, score: 0, day: 1, location: 'bkk',
-    inv: { potion: 3, hipotion: 0, ether: 1, phoenix: 1 },
+    partyName, members, gold: 150, fame: 0, score: 0, day: 1, minute: START_MINUTE, location: 'bkk',
+    inv: { potion: 3, ether: 1, phoenix: 1 },
     quests: [], cityQuests: {}, npcs: makeNpcs(),
     stats: { kills: 0, wins: 0, battles: 0, npcWins: 0, quests: 0 },
     settings: { autoPotion: true, autoRevive: true }, reachedTop: false, travel: null,
     bag: [makeEquip(EQUIPS.find((e) => e.id === 'c1')!, 0), makeEquip(EQUIPS.find((e) => e.id === 'w1')!, 1)],
     log: [],
     visited: [],
+    lastDriftDay: 1, lastQuestDay: 1,
   };
   addLog(g, 'info', `ปาร์ตี้ "${partyName}" ออกเดินทางจากกรุงเทพฯ`, 'เป้าหมาย: เป็นปาร์ตี้อันดับ 1 แห่งสยาม');
   g.quests.push({ id: uid('q'), type: 'hunt', title: 'ภารกิจแรก: ปราบศัตรู 3 ตัว', desc: 'ออกเดินทางและกำจัดศัตรู', target: 3, progress: 0, from: 'bkk', rewardGold: 80, rewardFame: 30, rewardXp: 40 });
@@ -50,7 +54,11 @@ export interface BattleSummary {
   questsDone: string[];
   npcName?: string;
   becameTop?: boolean;
+  /** In-game minutes the battle consumed. */
+  minutes?: number;
   drops: EquipItem[];
+  /** Materials harvested from the defeated enemies. */
+  mats: { id: string; name: string; icon: string; qty: number }[];
 }
 
 function giveXp(m: Member, xp: number, ups: { name: string; level: number }[]) {
@@ -76,9 +84,10 @@ export function completeQuests(g: GameState, sum: { gold: number; fame: number; 
 
 export function applyBattle(g: GameState, b: BattleState, group: EnemyGroup): BattleSummary {
   const win = b.over === 'win';
-  const sum: BattleSummary = { win, xp: 0, gold: 0, fame: 0, score: 0, levelUps: [], questsDone: [], drops: [] };
+  const sum: BattleSummary = { win, xp: 0, gold: 0, fame: 0, score: 0, levelUps: [], questsDone: [], drops: [], mats: [] };
   g.stats.battles++;
   g.inv = { ...b.inv };
+  prune(g.inv);
   // sync HP/MP
   for (const u of b.units) {
     if (u.side !== 'ally') continue;
@@ -125,27 +134,84 @@ export function applyBattle(g: GameState, b: BattleState, group: EnemyGroup): Ba
   // loot
   const lootChance = group.npcId ? 0.5 : 0.16 + enemies.length * 0.03;
   if (Math.random() < lootChance) { const d = randomDrop(group.level, group.npcId ? 0.15 : 0); g.bag.push(d); sum.drops.push(d); }
+  // Materials. This is the only source — they cannot be bought, so the market
+  // loop closes only if monsters actually drop them. Each enemy rolls its own
+  // table; elite (NPC) parties drop a little more often.
+  for (const e of enemies) {
+    for (const { mat, rate } of dropsOf(e.name)) {
+      const chance = rate * (group.npcId ? 1.5 : 1);
+      if (Math.random() < chance) {
+        const qty = 1 + (Math.random() < 0.25 ? 1 : 0);
+        addItem(g.inv, mat.id, qty);
+        sum.mats.push({ id: mat.id, name: mat.name, icon: mat.icon, qty });
+      }
+    }
+  }
   const names = [...new Set(enemies.map((e) => e.name))].join(', ');
   addLog(g, group.npcId ? 'npc' : 'win', group.npcId ? `ชนะปาร์ตี้ "${sum.npcName}"` : `ชนะ ${names}`, `เทิร์น ${b.turn} • +${sum.xp} EXP • +${sum.gold} ทอง • +${sum.fame} ชื่อเสียง`);
   sum.drops.forEach((d) => addLog(g, 'loot', `ได้รับ ${d.name}`, 'เก็บไว้ในกระเป๋า'));
+  sum.mats.forEach((m) => addLog(g, 'loot', `ได้${m.icon}${m.name} x${m.qty}`, 'นำไปขายที่ตลาด'));
   completeQuests(g, sum);
   sum.levelUps.forEach((l) => addLog(g, 'level', `${l.name} เลเวลอัปเป็น Lv${l.level}`, '+1 SP'));
   const wasTop = g.reachedTop;
   if (!wasTop && rankOf(g) === 1) { g.reachedTop = true; sum.becameTop = true; }
+  // A battle costs time proportional to how long it dragged on.
+  sum.minutes = advanceTime(g, battleMinutes(b.turn));
   return sum;
 }
 
+/**
+ * Rival parties gain ground over time — but only once per in-game day.
+ * Previously this ran on every map node, so a 20-node walk drifted them 20
+ * times and the ranking raced ahead of the player. Gating on the day makes
+ * "keep up with the competition" a calendar-paced goal instead of a
+ * foot-speed one.
+ */
 export function npcDrift(g: GameState) {
+  const { day } = normalize(g.day, g.minute);
+  if (g.lastDriftDay === day) return false;
+  g.lastDriftDay = day;
   for (const n of g.npcs) {
     n.fame += rint(0, 6 + Math.round(n.level / 2));
     if (Math.random() < 0.04 && n.level < 40) n.level++;
   }
+  return true;
+}
+
+/**
+ * Advance the clock. This is the ONLY place time moves forward, so the
+ * "1 node = 5 min" rule can never be bypassed by a stray `day +=`.
+ * Returns the number of days that rolled over, so callers can fire
+ * once-per-day side effects (quest restock, market refresh).
+ */
+export function advanceTime(g: GameState, minutes: number): number {
+  const { day, minute } = normalize(g.day, g.minute);
+  const next = addMinutes(day, minute, minutes);
+  const rolled = next.day - day;
+  g.day = next.day;
+  g.minute = next.minute;
+  return rolled;
+}
+
+/** Sleep until 07:00. If it is already past 07:00, the night ends the next morning. */
+export function restAtInn(g: GameState) {
+  const { day, minute } = normalize(g.day, g.minute);
+  const targetDay = minute >= INN_WAKE ? day + 1 : day;
+  g.day = targetDay;
+  g.minute = INN_WAKE;
+  npcDrift(g);
+  return { day: g.day, minute: g.minute };
 }
 
 export function arriveCity(g: GameState, city: string) {
   g.location = city; g.travel = null;
   g.quests.forEach((q) => { if (q.type === 'deliver' && q.targetCity === city) q.progress = 1; });
-  g.cityQuests[city] = makeCityQuests(g, city);
+  // Offers refresh once per day, so stepping out and back in does not reroll them.
+  if (g.lastQuestDay !== g.day) {
+    g.cityQuests = {};
+    g.lastQuestDay = g.day;
+  }
+  if (!g.cityQuests[city]) g.cityQuests[city] = makeCityQuests(g, city);
   npcDrift(g);
   addLog(g, 'city', `เดินทางถึง ${CITY[city].name}`);
 }
@@ -167,7 +233,7 @@ export function arriveNode(g: GameState, id: string): { msgs: string[]; battle: 
     case 'village': heal(0.25, 0.1); msgs.push('🏡 ชาวบ้านต้อนรับ ฟื้นฟู HP 25%'); break;
     case 'shrine': heal(0, 0.6); msgs.push('⛩️ สวดมนต์ที่ศาลเจ้า ฟื้น MP 60%'); if (first) { g.fame += 25; g.score += 50; msgs.push('🎖 ได้รับพร +25 ชื่อเสียง'); } break;
     case 'lake': heal(0.15, 0.25); msgs.push('💧 พักริมบึง ฟื้น HP/MP'); break;
-    case 'fort': if (first) { g.inv.potion += 2; msgs.push('🏰 ทหารที่ด่านมอบยาสมุนไพร x2'); } else msgs.push('🏰 ด่านทหาร — ปลอดภัย'); break;
+    case 'fort': if (first) { addItem(g.inv, POTION, 2); msgs.push('🏰 ทหารที่ด่านมอบยาสมุนไพร x2'); } else msgs.push('🏰 ด่านทหาร — ปลอดภัย'); break;
     case 'ruin':
       if (first) {
         if (Math.random() < 0.45) { const d = randomDrop(Math.round(n.tier * 2.2), 0.1); g.bag.push(d); msgs.push(`🏛️ พบอุปกรณ์โบราณ: ${d.name}`); addLog(g, 'loot', `พบ ${d.name} ที่${n.name}`); }

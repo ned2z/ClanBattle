@@ -9,7 +9,9 @@ import StartScreen, { DEFAULT_SETUP, HighScoreTable, type Setup } from './compon
 import { CITY, NODE } from './game/data';
 import { makeEncounter, partyLevel, rint, type BattleState } from './game/engine';
 import { fx } from './game/fx';
-import { addLog, applyBattle, arriveCity, arriveNode, completeQuests, loadHS, newGame, rankOf, saveHS, type BattleSummary, type HighScore } from './game/store';
+import { addLog, advanceTime, applyBattle, arriveCity, arriveNode, completeQuests, loadHS, newGame, rankOf, saveHS, type BattleSummary, type HighScore } from './game/store';
+import { PHOENIX, POTION, add as addItem } from './game/inv';
+import { PHASE, dayPhase, fmtTime, travelMinutes } from './game/time';
 import type { EnemyGroup, GameState, Travel } from './game/types';
 
 type Screen = 'start' | 'map' | 'battle' | 'gameover';
@@ -73,12 +75,14 @@ export default function App() {
     setGroup(grp); setBattleKey((k) => k + 1); setScreen('battle'); setTransition((x) => x + 1);
   }, [update]);
 
-  const onArrive = useCallback((city: string, sec: number) => {
+  const onArrive = useCallback((city: string, nodes: number) => {
     const g = gameRef.current; if (!g) return;
     const n = structuredClone(g);
     if (NODE[city].kind !== 'city') {
+      // Advance the clock FIRST: arriveNode does daily rollover checks against
+      // g.day, so it must observe the day the journey actually ended on.
+      advanceTime(n, travelMinutes(1));
       const res = arriveNode(n, city);
-      n.day += Math.max(1, Math.round(sec / 20));
       setGame(n); gameRef.current = n;
       res.msgs.forEach((m) => toast(m));
       if (res.battle) {
@@ -90,8 +94,9 @@ export default function App() {
       }
       return;
     }
+    // Clock first, then the daily rollover work (quests / rivals) for that day.
+    advanceTime(n, travelMinutes(nodes));
     arriveCity(n, city);
-    n.day += Math.max(1, Math.round(sec / 20));
     const sum = { gold: 0, fame: 0, score: 0, levelUps: [] as { name: string; level: number }[], questsDone: [] as string[] };
     completeQuests(n, sum);
     sum.levelUps.forEach((l) => addLog(n, 'level', `${l.name} เลเวลอัปเป็น Lv${l.level}`, '+1 SP'));
@@ -110,8 +115,8 @@ export default function App() {
     update((n) => {
       n.travel = t;
       if (roll < 0.6) n.gold += v;
-      else if (roll < 0.85) n.inv.potion++;
-      else n.inv.phoenix++;
+      else if (roll < 0.85) addItem(n.inv, POTION);
+      else addItem(n.inv, PHOENIX);
       addLog(n, 'loot', roll < 0.6 ? `พบหีบสมบัติ +${v} ทอง` : roll < 0.85 ? 'พบยาสมุนไพร 🧃' : 'พบขนนกการเวก 🪶');
     });
     toast(roll < 0.6 ? `🎁 พบหีบสมบัติ! +${v} 🪙` : roll < 0.85 ? '🎁 พบยาสมุนไพร 🧃' : '✨ พบขนนกการเวก 🪶!');
@@ -163,6 +168,7 @@ export default function App() {
   }, [screen]);
 
   const rank = game ? rankOf(game) : 0;
+  const clock = game ? PHASE[dayPhase(game.minute)] : PHASE.day;
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#0c0f0a]">
@@ -181,7 +187,7 @@ export default function App() {
                   <span>🎖 <b className="text-orange-300">{game.fame}</b></span>
                   <span>🏅 <b className="text-lime-300">{game.score}</b></span>
                   <span className={rank === 1 ? 'shine-text font-bold' : ''}>🏆 #{rank}</span>
-                  <span className="text-stone-400">วันที่ {game.day}</span>
+                  <span className="text-stone-400">📅 วันที่ {game.day} · <b style={{ color: clock.color }}>{clock.icon} {fmtTime(game.minute)}</b> {clock.label}</span>
                 </div>
                 <div className="flex gap-1">
                   <button className="btn btn-gold relative px-2.5 py-1.5" title="เมนูปาร์ตี้ (Q)" onClick={() => setPanel('party')}>👥<span className="hidden sm:inline"> Party</span>{game.members.some((m) => m.sp > 0) && <span className="absolute -right-1 -top-1 h-3 w-3 animate-pulse rounded-full bg-red-500" />}</button>

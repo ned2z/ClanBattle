@@ -6,6 +6,7 @@ import { PORTRAIT } from '../game/portraits';
 import { TRAVEL_SPEED, findPath, memberStats, neighbors, partyLevel, pathLen, routeTier, segLen } from '../game/engine';
 import { fx } from '../game/fx';
 import { levelRange } from '../game/store';
+import { addMinutes, fmtDuration, fmtTime, travelMinutes } from '../game/time';
 import type { GameState, Travel } from '../game/types';
 
 interface Props {
@@ -13,7 +14,7 @@ interface Props {
   paused: boolean;
   active: boolean;
   onEncounter: (t: Travel, tier: number) => void;
-  onArrive: (city: string, travelSec: number) => void;
+  onArrive: (city: string, nodesPassed: number) => void;
   onStartTravel: (path: string[]) => void;
   onTreasure: (t: Travel) => void;
   onOpenCity: () => void;
@@ -38,7 +39,7 @@ export default function MapScreen({ game, paused, active, onEncounter, onArrive,
 
   const traveling = !!game.travel;
   const path = useMemo(() => (sel && !traveling ? findPath(game.location, sel) : game.travel?.path ?? null), [sel, traveling, game.location, game.travel]);
-  const pLen = path ? pathLen(path) : 0;
+  const pNodes = path ? path.length - 1 : 0;
 
   // latest click handler for the 3D world
   const clickRef = useRef<(id: string) => void>(() => {});
@@ -117,9 +118,10 @@ export default function MapScreen({ game, paused, active, onEncounter, onArrive,
           const c = NODE[t.path[t.path.length - 1]];
           worldRef.current?.setToken(c.x, c.y, false);
           worldRef.current?.burstAt(c.x, c.y, 0xf6c453, 70);
-          const sec = elapsedRef.current; elapsedRef.current = 0;
+          const nodes = t.path.length - 1;
+          elapsedRef.current = 0;
           setSel(null);
-          onArrive(c.id, sec);
+          onArrive(c.id, nodes);
           return;
         }
       }
@@ -127,7 +129,12 @@ export default function MapScreen({ game, paused, active, onEncounter, onArrive,
       // progress UI
       let covered = 0; for (let i = 0; i < t.seg; i++) covered += segLen(t.path[i], t.path[i + 1]);
       covered += segLen(t.path[t.seg], t.path[t.seg + 1]) * t.t;
-      if (etaRef.current) etaRef.current.textContent = `${Math.max(0, (total - covered) / TRAVEL_SPEED).toFixed(1)}s`;
+      if (etaRef.current) {
+        // ETA is shown in in-game time, not real seconds: 1 node = 5 min.
+        const realLeft = Math.max(0, (total - covered) / TRAVEL_SPEED);
+        const nodesLeft = total > 0 ? ((total - covered) / total) * (t.path.length - 1) : 0;
+        etaRef.current.textContent = `${fmtDuration(travelMinutes(nodesLeft))} (${realLeft.toFixed(0)} วิ)`;
+      }
       if (barRef.current) barRef.current.style.width = `${(covered / total) * 100}%`;
       tvProgress.current = covered / total;
       tvRef.current?.setProgress(covered / total, true);
@@ -266,7 +273,8 @@ export default function MapScreen({ game, paused, active, onEncounter, onArrive,
                 <div className="text-[13px]" style={{ color: NODE_KIND_INFO[NODE[sel].kind].color }}>{NODE_KIND_INFO[NODE[sel].kind].icon} {NODE_KIND_INFO[NODE[sel].kind].th} — {NODE_KIND_INFO[NODE[sel].kind].desc}{NODE[sel].kind !== 'city' && game.visited.includes(sel) && <span className="ml-1 text-stone-400">(เคยแวะแล้ว)</span>}</div>
                 <div className="truncate text-[13px] text-stone-400">เส้นทาง {(path?.length ?? 1) - 1} ช่วง • ผ่านเมือง: {path?.filter((c, i) => i > 0 && NODE[c].kind === 'city').map((c) => NODE[c].name).join(', ') || '-'}</div>
                 {Math.round(destTier * 2.2 - 1.5) > partyLevel(game) + 3 && <div className="text-[13px] font-bold text-red-400">⚠ อันตรายสูง! ศัตรูเลเวลสูงกว่าปาร์ตี้มาก</div>}
-                <div className="text-[13px]">⏱ {(pLen / TRAVEL_SPEED).toFixed(1)} วิ • อันตราย <span style={{ color: tierColor(maxTier) }}>{'☠'.repeat(Math.max(1, Math.ceil(maxTier / 2)))}</span> • ศัตรู Lv{levelRange(destTier)}</div>
+                <div className="text-[13px]">⏱ {fmtDuration(travelMinutes(pNodes))} • อันตราย <span style={{ color: tierColor(maxTier) }}>{'☠'.repeat(Math.max(1, Math.ceil(maxTier / 2)))}</span> • ศัตรู Lv{levelRange(destTier)}</div>
+                <div className="text-[13px] text-sky-300">🕐 ถึงปลายทางประมาณ {fmtTime(addMinutes(game.day, game.minute, travelMinutes(pNodes)).minute)}</div>
               </div>
               <button className="btn btn-red pulse-glow shrink-0 px-5 py-3 text-lg" onClick={() => path && onStartTravel(path)}>⚔ เดินทาง</button>
             </div>

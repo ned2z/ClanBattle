@@ -3,6 +3,7 @@ import { BASE_ULT, CLASS2, CLASS2_LEVEL, CLASS2_OF, CLASSES, CLASS_IDS, COMMON_S
 import { EquipIcon, ItemIcon, RarityTag, SkillIcon, EL_STYLE, KIND_FRAME } from './Icons';
 import { MAX_SKILL_LV, memberStats, scaledSkill, skillUpCost, xpNeed } from '../game/engine';
 import { fx } from '../game/fx';
+import { count } from '../game/inv';
 import { PORTRAIT } from '../game/portraits';
 import type { EquipItem, GameState, Member, Stats, Tactic, Targeting } from '../game/types';
 
@@ -291,7 +292,7 @@ function TacticTab({ m, mu, game, update }: { m: Member; mu: (fn: (mm: Member) =
       </div>
       <div className="tof-frame space-y-2 rounded-xl p-3">
         <div className="text-sm font-bold text-amber-200">ไอเทมปาร์ตี้ (ใช้อัตโนมัติ)</div>
-        <div className="grid grid-cols-2 gap-1.5">{ITEMS.map((it) => <div key={it.id} className="flex items-center gap-2 rounded-lg bg-black/30 p-1.5 text-xs"><ItemIcon id={it.id} size={36} /><span className="flex-1">{it.name}<div className="text-[12px] text-stone-400">{it.desc}</div></span><b>x{game.inv[it.id]}</b></div>)}</div>
+        <div className="grid grid-cols-2 gap-1.5">{ITEMS.map((it) => <div key={it.id} className="flex items-center gap-2 rounded-lg bg-black/30 p-1.5 text-xs"><ItemIcon id={it.id} size={36} /><span className="flex-1">{it.name}<div className="text-[12px] text-stone-400">{it.desc}</div></span><b>x{count(game.inv, it.id)}</b></div>)}</div>
         <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={game.settings.autoPotion} onChange={(e) => update((g) => { g.settings.autoPotion = e.target.checked; })} /> ใช้ยาอัตโนมัติเมื่อ HP ต่ำ</label>
         <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={game.settings.autoRevive} onChange={(e) => update((g) => { g.settings.autoRevive = e.target.checked; })} /> ใช้ขนนกชุบชีวิตอัตโนมัติ</label>
         <div className="rounded-lg bg-sky-900/30 p-2 text-[13px] text-sky-100">💡 เคล็ดลับ: ให้สายโล่เปิด "ยั่วยุ" อันดับ 1, เวทย์ขาวตั้งฮีลที่ 60-80%, สายดาเมจใช้แผน "บุก" — ดูแท็บ 📊 ผลงาน หลังจบศึกเพื่อปรับแต่ง</div>
@@ -368,7 +369,7 @@ function Codex({ game }: { game: GameState }) {
             <div className="tof-frame rounded-xl p-2">
               <div className="mb-2 text-sm font-bold text-amber-200">ของใช้</div>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2">
-                {ITEMS.map((it) => <button key={it.id} onClick={() => setSel({ t: 'item', id: it.id })} className={`flex flex-col items-center gap-1 rounded-xl p-1.5 ${sel.t === 'item' && sel.id === it.id ? 'bg-amber-500/20 ring-2 ring-amber-300' : 'hover:bg-white/5'}`}><ItemIcon id={it.id} size={50} count={game.inv[it.id]} /><span className="text-center text-[12px] leading-tight">{it.name}</span></button>)}
+                {ITEMS.map((it) => <button key={it.id} onClick={() => setSel({ t: 'item', id: it.id })} className={`flex flex-col items-center gap-1 rounded-xl p-1.5 ${sel.t === 'item' && sel.id === it.id ? 'bg-amber-500/20 ring-2 ring-amber-300' : 'hover:bg-white/5'}`}><ItemIcon id={it.id} size={50} count={count(game.inv, it.id)} /><span className="text-center text-[12px] leading-tight">{it.name}</span></button>)}
               </div>
             </div>
             {(['weapon', 'armor', 'acc'] as const).map((sl) => (
@@ -404,7 +405,7 @@ function Codex({ game }: { game: GameState }) {
             </div>
           );
         })()}
-        {sel.t === 'item' && (() => { const it = ITEMS.find((x) => x.id === sel.id)!; return <div><div className="flex items-center gap-3"><ItemIcon id={it.id} size={76} /><div><div className="title-font text-xl">{it.name}</div><div className="text-sm text-stone-300">มีอยู่ x{game.inv[it.id]}</div></div></div><div className="mt-3 rounded-lg bg-black/30 p-2 text-sm">{it.desc}</div><div className="mt-2 text-[13px] text-stone-400">ราคา {it.price} 🪙 • ใช้อัตโนมัติในการต่อสู้ (ตั้งค่าได้ในแท็บแผนรบ)</div></div>; })()}
+        {sel.t === 'item' && (() => { const it = ITEMS.find((x) => x.id === sel.id)!; return <div><div className="flex items-center gap-3"><ItemIcon id={it.id} size={76} /><div><div className="title-font text-xl">{it.name}</div><div className="text-sm text-stone-300">มีอยู่ x{count(game.inv, it.id)}</div></div></div><div className="mt-3 rounded-lg bg-black/30 p-2 text-sm">{it.desc}</div><div className="mt-2 text-[13px] text-stone-400">ราคา {it.price} 🪙 • ใช้อัตโนมัติในการต่อสู้ (ตั้งค่าได้ในแท็บแผนรบ)</div></div>; })()}
         {sel.t === 'equip' && (() => { const e = EQUIPS.find((x) => x.id === sel.id)!; return <div><div className="flex items-center gap-3"><EquipIcon item={e} size={76} /><div><div className="title-font text-xl">{e.name}</div><div className="text-sm text-stone-300">{SLOT_INFO[e.slot].name} ระดับ {e.tier}</div></div></div><div className="mt-3 space-y-0.5 rounded-lg bg-black/30 p-2 text-sm text-lime-300">{Object.entries(e.bonus).map(([k, v]) => <div key={k}>{STAT_NAME[k as keyof Stats]} +{v}</div>)}</div><div className="mt-2 text-[13px] text-stone-400">ราคาพื้นฐาน {e.price} 🪙 • ระดับ ✦หายาก / ✦✦มหากาพย์ ได้จากการชนะศึก (ค่าสูงขึ้น 30-65%)</div></div>; })()}
       </div>
     </div>
