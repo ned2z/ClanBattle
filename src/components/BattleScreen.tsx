@@ -24,6 +24,15 @@ interface LogLine { id: number; turn: number; side: 'ally' | 'enemy'; icon: stri
 interface UStat { dealt: number; taken: number; healed: number; kills: number; crits: number; actions: number; attacks: number; stunned: number; misses: number; skills: Record<string, number> }
 
 const SPEEDS = [1, 2, 4];
+
+/** how long the swing animation keeps playing after the hit lands (scaled by speed) */
+const ANIM_TAIL = 0.2;
+/**
+ * Rest between every action, in real seconds. Deliberately NOT scaled by the
+ * speed toggle: whatever the battle speed, there is always a 0.5s breath after
+ * an action so the player can read the board before the next turn starts.
+ */
+const ACTION_DELAY = 0.5;
 const snap = (b: BattleState): Record<string, View> =>
   Object.fromEntries(b.units.map((u) => [u.uid, { uid: u.uid, hp: u.hp, maxHp: u.maxHp, mp: u.mp, maxMp: u.maxMp, alive: u.alive, atb: u.atb, ult: u.ult, statuses: u.statuses.map((s) => ({ ...s })) }]));
 const DOT = new Set(['poison', 'burn', 'bleed']);
@@ -41,7 +50,8 @@ export default function BattleScreen({ game, group, paused, onFinish, onContinue
   const [flashK, setFlashK] = useState(0);
   const [lines, setLines] = useState<LogLine[]>([{ id: 0, turn: 0, side: 'enemy', icon: '⚔', text: `${group.title} ปรากฏตัว!`, details: [], kind: 'info' }]);
   const [showLog, setShowLog] = useState(false);
-  const [speed, setSpeed] = useState(() => Number(localStorage.getItem('tbs-speed') || 2));
+  // v2 key: forces everyone back to 1x on first load so the intro is watchable
+  const [speed, setSpeed] = useState(() => Number(localStorage.getItem('tbs-speed-v2') || 1));
   const [phase, setPhase] = useState<'intro' | 'fight' | 'done'>('intro');
   const [summary, setSummary] = useState<BattleSummary | null>(null);
   const [resTab, setResTab] = useState<'sum' | 'perf' | 'log'>('sum');
@@ -58,7 +68,7 @@ export default function BattleScreen({ game, group, paused, onFinish, onContinue
 
   const later = (fn: () => void, ms: number) => { timers.current.push(window.setTimeout(fn, ms)); };
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
-  useEffect(() => { localStorage.setItem('tbs-speed', String(speed)); }, [speed]);
+  useEffect(() => { localStorage.setItem('tbs-speed-v2', String(speed)); }, [speed]);
 
   useEffect(() => {
     const w = new BattleWorld(hostRef.current!, b.units, (id) => anchors.current[id], group.biome ?? 'plain');
@@ -122,11 +132,17 @@ export default function BattleScreen({ game, group, paused, onFinish, onContinue
     } else { worldRef.current?.victory('enemy'); fx.shake(16, 30); }
   }, [b, onFinish, syncStatuses]);
 
+  useEffect(() => { fx.shake(8, 14); }, []);
+
+  // wait for the real 3D entrance to finish instead of guessing a duration
   useEffect(() => {
-    fx.shake(8, 14);
-    const t = setTimeout(() => setPhase('fight'), 2100);
-    return () => clearTimeout(t);
-  }, []);
+    if (phase !== 'intro') return;
+    let tries = 0;
+    const id = window.setInterval(() => {
+      if (worldRef.current?.isEntranceDone() || ++tries > 60) { clearInterval(id); setPhase('fight'); }
+    }, 50);
+    return () => clearInterval(id);
+  }, [phase]);
 
   // ---------- play one event
   const playEvent = useCallback((ev: ActionEvent) => {
@@ -135,18 +151,18 @@ export default function BattleScreen({ game, group, paused, onFinish, onContinue
     const tech = techFor(ev, actor);
     const sp = speed;
     const impact = (IMPACT[tech] * (ev.ult ? 1.35 : 1)) / sp;
-    const total = impact + 0.55 / sp;
-    nextDelay.current = total * 1000 + 60;
+    const total = impact + ANIM_TAIL / sp;
+    nextDelay.current = (total + ACTION_DELAY) * 1000;
     const targets = [...new Set(ev.hits.filter((h) => !(h.uid === ev.actor && ev.hits.indexOf(h) === 0 && h.status?.some((s) => DOT.has(s)))).map((h) => h.uid))];
     const tIds = targets.filter((id) => id !== ev.actor || ['buff', 'heal', 'item'].includes(ev.kind));
     setActiveUid(ev.actor);
     const rar = ev.skillId ? SKILL[ev.skillId]?.rarity ?? 0 : 0;
     const big = ev.isSkill && (BIG_TECH.has(tech) || rar >= 2 || !!ev.ult);
     if (rar >= 2) { w?.shake(0.3, 0.3); }
-    w?.act(ev.actor, tech, tIds.length ? tIds : [ev.actor], ev.element, impact, total, ev.isSkill);
+    w?.act(ev.actor, tech, tIds.length ? tIds : [ev.actor], ev.element, impact, total, ev.isSkill, !!ev.ult);
     if (ev.kind === 'skip') w?.stun(ev.actor);
     if (big) setCutin({ k: ++fid, text: ev.label, icon: ev.icon, side: actor.side, img: actor.cls ? PORTRAIT[actor.cls] : undefined, name: ev.ult ? `${actor.name} • ⚡ ULTIMATE` : rar >= 2 ? `${actor.name} • ${rar === 3 ? '💠 UNIQUE' : '🌟 LEGENDARY'}` : actor.name, color: ev.ult ? '#ff2ad0' : rar === 3 ? '#ff3d7f' : rar === 2 ? '#ffb020' : actor.color, sid: ev.skillId });
-    if (ev.ult) { w?.shake(0.45, 0.4); setFlashK((k) => k + 1); }
+    if (ev.ult) { w?.shake(0.45, 0.4); w?.celebrate(true); setFlashK((k) => k + 1); }
     else if (ev.isSkill) setBanner({ k: ++fid, text: ev.label, icon: ev.icon, side: actor.side, sid: ev.skillId });
     record(ev);
     later(() => {

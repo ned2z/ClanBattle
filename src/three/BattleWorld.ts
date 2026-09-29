@@ -3,7 +3,6 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { BokehPass } from 'three/examples/jsm/postprocessing/BokehPass.js';
 import type { Biome, Element, StatusType, Unit } from '../game/types';
 import { CLASS2 } from '../game/data';
 import { disposeScene } from './MapWorld';
@@ -12,6 +11,15 @@ import { ParticleSystem } from './particles';
 import { glowTexture, groundTexture, magicCircleTexture, skyTexture } from './textures';
 import { toonGradient } from './models';
 import { BIG_TECH, MELEE_TECH, Vfx, easeInOut, easeOut, type Fx, type Tech, type VfxHost } from './vfx';
+import { CameraDirector } from './camera/director';
+import { CameraInput } from './camera/input';
+
+/** entrance choreography: everyone lands on the same beat, ~2s in */
+const ENTRANCE_TOTAL = 2.0;
+const ENTRANCE_DUR = 0.85;
+const ENTRANCE_HEAD = 0.15;
+const ENTRANCE_MIN_GAP = 0.13;
+const ENTRANCE_MAX_GAP = 0.30;
 
 export const EL_COLOR: Record<Element, number> = {
   phys: 0xffe28a, fire: 0xff7a2a, ice: 0x7dd3fc, thunder: 0xfff27a, dark: 0xa06bff, holy: 0xfff3c0, poison: 0x8be04a, wind: 0x5eead4,
@@ -50,6 +58,11 @@ export class BattleWorld implements VfxHost {
   private camBase = new THREE.Vector3(); private camLook = new THREE.Vector3(); private intro = 0;
   private camFocus = new THREE.Vector3(); private camFocusT = new THREE.Vector3(); private camZoom = 1; private camZoomT = 1;
   private portrait = false;
+  // ---- camera: one fixed hovering framing + player drag (legacy rig kept as fallback) ----
+  private dir = new CameraDirector();
+  private useDirector = true;
+  private camInput: CameraInput | null = null;
+  private arenaC = new THREE.Vector3();
   private flashLight = new THREE.PointLight(0xffffff, 0, 16, 1.5);
   private fireLights: THREE.PointLight[] = [];
   private emitters: THREE.Vector3[] = [];
@@ -60,7 +73,6 @@ export class BattleWorld implements VfxHost {
   private disposed = false;
   private tmpV = new THREE.Vector3();
   private tipV = new THREE.Vector3();
-  private bokeh: BokehPass | null = null;
   private windU = { value: 0 };
   private biome: Biome;
   private lookT = new THREE.Vector3();
@@ -82,8 +94,6 @@ export class BattleWorld implements VfxHost {
 
     this.composer = new EffectComposer(this.renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: coarse ? 0 : 2 }));
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bokeh = new BokehPass(this.scene, this.camera, { focus: 15, aperture: 0.0022, maxblur: 0.009 });
-    this.composer.addPass(this.bokeh);
     this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.12, 0.25, 1.0);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
@@ -130,18 +140,15 @@ export class BattleWorld implements VfxHost {
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(container);
     this.resize();
-    this.intro = 1;
-    let ia = 0, ie = 0;
-    for (const u of this.units.values()) {
-      const ally = u.side === 'ally';
-      const i = ally ? ia++ : ie++;
-      const humanoid = !!u.rig.limbs?.legL;
-      const from = u.base.clone();
-      if (!ally && !humanoid) from.y = 9;
-      else if (this.portrait) from.z += ally ? 11 : -11;
-      else from.x += ally ? -12 : 12;
-      u.enter = { t: -(0.35 + i * 0.16 + (ally ? 0 : 0.08)), dur: 0.85, from, landed: false };
+    if (this.useDirector) {
+      this.syncArenaCentre();
+      this.dir.update(1);
+      this.dir.snap();
+      this.dir.apply(this.camera);
+      this.camInput = new CameraInput(this.renderer.domElement, this.dir);
     }
+    this.intro = 1;
+    this.scheduleEntrance();
     this.last = performance.now();
     this.raf = requestAnimationFrame(this.loop);
   }
@@ -297,6 +304,7 @@ export class BattleWorld implements VfxHost {
     } else {
       const k = Math.max(1, 1.5 / aspect);
       this.camBase.set(-8.2 * k, 6.4 * k, 7.2 * k); this.camLook.set(1.0, 0.6, -0.1);
+    this.dir.portrait = this.portrait;
     }
   }
 
@@ -313,12 +321,27 @@ export class BattleWorld implements VfxHost {
     this.camera.updateProjectionMatrix();
     const ph = h * this.renderer.getPixelRatio();
     this.add.setScale(ph, this.camera.fov); this.norm.setScale(ph, this.camera.fov);
+    if (this.useDirector) { this.dir.portrait = this.portrait; this.dir.update(1); this.dir.snap(); this.dir.apply(this.camera); }
+  }
+
+  /** keep the hovering camera centred on whatever is left standing */
+  private syncArenaCentre() {
+    const live = [...this.units.values()].filter((u) => !u.dead);
+    const list = live.length ? live : [...this.units.values()];
+    this.arenaC.set(0, 0, 0);
+    for (const u of list) this.arenaC.add(u.base);
+    this.arenaC.divideScalar(list.length);
+    this.arenaC.y = 0.7;
+    this.dir.setCentre(this.arenaC);
   }
 
   // ------------------------------------------------------------ HOST API
   later(sec: number, fn: () => void) { this.timers.push({ t: sec, fn }); }
   addFx(f: Fx) { this.fxs.push(f); }
-  shake(m: number, dur = 0.3) { this.shakeM = Math.max(this.shakeM * (this.shakeT / 0.3), m); this.shakeT = Math.max(this.shakeT, dur); }
+  shake(m: number, dur = 0.3) {
+    if (this.useDirector) return;   // the new camera never shakes
+    this.shakeM = Math.max(this.shakeM * (this.shakeT / 0.3), m); this.shakeT = Math.max(this.shakeT, dur);
+  }
   hitstop(sec: number) { this.hitT = Math.max(this.hitT, sec); }
   flash(pos: THREE.Vector3, color: number, intensity: number) {
     this.flashLight.position.copy(pos).setY(pos.y + 1.5); this.flashLight.color.setHex(color); this.flashLight.intensity = intensity;
@@ -326,13 +349,14 @@ export class BattleWorld implements VfxHost {
   private chest(u: BU, out = new THREE.Vector3()) { return out.copy(u.rig.root.position).add(this.tmpV.set(0, u.rig.height * 0.55, 0)); }
   private fwd(u: BU) { return new THREE.Vector3(Math.sin(u.face), 0, Math.cos(u.face)); }
   private focus(p: THREE.Vector3 | null, zoom: number) {
+    // keep the legacy target in sync so toggling useDirector mid-fight is safe
     if (p) this.camFocusT.set(p.x * 0.4, 0, p.z * 0.4); else this.camFocusT.set(0, 0, 0);
     this.camZoomT = zoom;
   }
 
   // ------------------------------------------------------------ ACTIONS
   /** plays a technique. impact/total in seconds (already speed-scaled) */
-  act(actorId: string, tech: Tech, targetIds: string[], element: Element, impact: number, total: number, isSkill: boolean) {
+  act(actorId: string, tech: Tech, targetIds: string[], element: Element, impact: number, total: number, isSkill: boolean, _ult = false) {
     for (const uu of this.units.values()) if (uu.enter) uu.enter.t = Math.max(uu.enter.t, uu.enter.dur);
     const a = this.units.get(actorId);
     if (!a || tech === 'none') return;
@@ -362,7 +386,7 @@ export class BattleWorld implements VfxHost {
 
     // camera direction
     const big = isSkill && BIG_TECH.has(tech);
-    if (big) {
+    if (!this.useDirector && big) {
       this.focus(a.base, 0.86);
       this.later(impact * 0.75, () => this.focus(centre, 0.92));
       this.later(total, () => this.focus(null, 1));
@@ -437,10 +461,37 @@ export class BattleWorld implements VfxHost {
   setHp(uid: string, ratio: number) { const u = this.units.get(uid); if (u) u.hp = ratio; }
 
   victory(side: 'ally' | 'enemy') {
-    this.focus(null, side === 'ally' ? 0.9 : 1.05);
+    if (!this.useDirector) this.focus(null, side === 'ally' ? 0.9 : 1.05);
     for (const u of this.units.values()) if (u.side === side && !u.dead) u.anim = { type: 'victory', t: 0, dur: 3, hitAt: 0, color: 0xffffff };
     if (side === 'ally') for (let i = 0; i < 8; i++) this.later(i * 0.16, () => { const c = [0xf6c453, 0xfff3c0, 0x86efac, 0x7dd3fc][i % 4]; const p = new THREE.Vector3((Math.random() - 0.5) * 8, 3 + Math.random() * 2, (Math.random() - 0.5) * 4); this.add.burst(p, c, 60, { speed: 6, life: 1.3, gravity: 4, size: 0.3 }); });
   }
+
+  // ------------------------------------------------------------ ENTRANCE
+  /**
+   * Staggered entrance: units leap in one at a time, alternating between the
+   * two sides. Timing is solved so the last one always touches down at
+   * ENTRANCE_TOTAL seconds, whatever the party size.
+   */
+  private scheduleEntrance() {
+    const list = [...this.units.values()].sort((a, b) => (a.side === b.side ? 0 : a.side === 'ally' ? -1 : 1));
+    const n = list.length;
+    const gap = n > 1
+      ? THREE.MathUtils.clamp((ENTRANCE_TOTAL - ENTRANCE_HEAD - ENTRANCE_DUR) / (n - 1), ENTRANCE_MIN_GAP, ENTRANCE_MAX_GAP)
+      : ENTRANCE_MAX_GAP;
+    const head = Math.max(ENTRANCE_HEAD, ENTRANCE_TOTAL - ENTRANCE_DUR - gap * (n - 1));
+    list.forEach((u, i) => {
+      const ally = u.side === 'ally';
+      const humanoid = !!u.rig.limbs?.legL;
+      const from = u.base.clone();
+      if (!ally && !humanoid) from.y = 9;                       // big monsters drop from the sky
+      else if (this.portrait) from.z += ally ? 5.2 : -5.2;
+      else from.x += ally ? -5.5 : 5.5;                         // humanoids leap in from the side
+      u.enter = { t: -(head + i * gap), dur: ENTRANCE_DUR, from, landed: false };
+    });
+  }
+
+  /** true once every unit has finished its entrance */
+  isEntranceDone() { return [...this.units.values()].every((u) => !u.enter); }
 
   // ------------------------------------------------------------ LOOP
   private loop = (now: number) => {
@@ -451,6 +502,7 @@ export class BattleWorld implements VfxHost {
     this.last = now;
     let dt = this.paused ? 0 : rdt;
     if (this.hitT > 0) { this.hitT -= rdt; dt *= 0.08; }
+    if (this.useDirector && this.dir.slowT > 0) dt *= this.dir.slowScale;
     this.time += dt;
     const t = this.time;
 
@@ -555,7 +607,7 @@ export class BattleWorld implements VfxHost {
           if (drop) { pos.copy(u.base); pos.y = e.from.y * (1 - k * k); r.rig.rotation.x = 0; }
           else {
             pos.lerpVectors(e.from, u.base, easeOut(k));
-            pos.y = Math.sin(k * Math.PI) * 2.6;
+            pos.y = Math.sin(k * Math.PI) * 3.2;
             r.rig.rotation.y = (1 - k) * Math.PI * 2;
             const l = r.limbs; const tuck = Math.sin(k * Math.PI);
             if (l?.legL) l.legL.o.rotation.x = l.legL.rx - tuck * 1.1; if (l?.legR) l.legR.o.rotation.x = l.legR.rx - tuck * 0.7;
@@ -622,23 +674,32 @@ export class BattleWorld implements VfxHost {
 
     // camera
     this.intro = THREE.MathUtils.clamp(this.intro - realDt / 1.2, 0, 1);
-    const ik = easeInOut(this.intro);
+    if (this.useDirector) {
+      this.syncArenaCentre();
+      this.dir.step(dt);
+      this.dir.update(dt);
+      this.dir.apply(this.camera);
+      this.lookT.copy(this.camera.position);
+      this.bloom.strength = 0.12 + this.dir.bloomBoost;
+      this.renderer.toneMappingExposure = 1.08 + this.dir.flash * 0.6;
+    } else {
+      const ik = easeInOut(this.intro);
     this.camFocus.lerp(this.camFocusT, 1 - Math.exp(-rdt * 3.5));
-    this.camZoom += (this.camZoomT - this.camZoom) * (1 - Math.exp(-rdt * 3.5));
-    const cp = this.camera.position;
-    cp.copy(this.camBase).sub(this.camLook).multiplyScalar(this.camZoom).add(this.camLook).add(this.camFocus);
+      this.camZoom += (this.camZoomT - this.camZoom) * (1 - Math.exp(-rdt * 3.5));
+      const cp = this.camera.position;
+      cp.copy(this.camBase).sub(this.camLook).multiplyScalar(this.camZoom).add(this.camLook).add(this.camFocus);
     cp.x += Math.sin(this.time * 0.25) * 0.5 + ik * 7;
-    cp.y += ik * 6; cp.z += ik * 7;
+      cp.y += ik * 6; cp.z += ik * 7;
     if (this.shakeT > 0) { this.shakeT -= rdt; const m = this.shakeM * Math.max(0, this.shakeT / 0.3); cp.x += (Math.random() - 0.5) * m; cp.y += (Math.random() - 0.5) * m; }
-    this.tmpV.copy(this.camLook).add(this.camFocus);
-    this.camera.lookAt(this.tmpV);
-    this.lookT.copy(this.tmpV);
+      this.tmpV.copy(this.camLook).add(this.camFocus);
+  this.camera.lookAt(this.tmpV);
+      this.lookT.copy(this.tmpV);
+this.punch = Math.max(0, this.punch - rdt * 3);
+      const baseFov = this.portrait ? 52 : 40;
+      const fov = baseFov - Math.sin(this.punch * Math.PI) * 4;
+      if (Math.abs(this.camera.fov - fov) > 0.01) { this.camera.fov = fov; this.camera.updateProjectionMatrix(); }
+    }
     this.windU.value = this.time;
-    if (this.bokeh) { const bu = this.bokeh.uniforms as unknown as Record<string, { value: number }>; const want = cp.distanceTo(this.lookT) * 0.86; bu.focus.value += (want - bu.focus.value) * Math.min(1, rdt * 6); bu.aperture.value = this.intro > 0.05 ? 0.0032 : 0.0015; }
-    this.punch = Math.max(0, this.punch - rdt * 3);
-    const baseFov = this.portrait ? 52 : 40;
-    const fov = baseFov - Math.sin(this.punch * Math.PI) * 4;
-    if (Math.abs(this.camera.fov - fov) > 0.01) { this.camera.fov = fov; this.camera.updateProjectionMatrix(); }
 
     this.composer.render(rdt);
 
@@ -653,7 +714,25 @@ export class BattleWorld implements VfxHost {
     }
   };
 
+  /** toggle the hovering camera at runtime (falls back to the legacy rig) */
+  setDirector(on: boolean) {
+    if (this.useDirector === on) return;
+    this.useDirector = on;
+    if (on) { this.syncArenaCentre(); this.dir.update(1); this.dir.snap(); this.dir.apply(this.camera); this.dir.resetUserInput(); }
+    else { this.intro = 1; }
+  }
+
+  /** ULT drama - slow motion and a white flash, but the camera itself never moves */
+  celebrate(ult: boolean) {
+    if (!this.useDirector || !ult) return;
+    this.dir.slowmo(0.55, 0.25);
+    this.dir.flashTo(1);
+    this.dir.bloomTo(1);
+  }
+
+
   dispose() {
+    this.camInput?.dispose();
     this.disposed = true;
     cancelAnimationFrame(this.raf);
     this.ro.disconnect();
