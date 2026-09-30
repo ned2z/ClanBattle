@@ -3,7 +3,7 @@ import { CITIES, CLASSES, NODE, NODE_KIND_INFO } from '../game/data';
 import { MapWorld } from '../three/MapWorld';
 import { TravelWorld } from '../three/TravelWorld';
 import { PORTRAIT } from '../game/portraits';
-import { TRAVEL_SPEED, findPath, memberStats, neighbors, partyLevel, pathLen, routeTier, segLen } from '../game/engine';
+import { TRAVEL_SPEED, findPath, neighbors, partyLevel, pathLen, routeTier, segLen } from '../game/engine';
 import { fx } from '../game/fx';
 import { levelRange } from '../game/store';
 import { addMinutes, fmtDuration, fmtTime, travelMinutes } from '../game/time';
@@ -62,6 +62,9 @@ export default function MapScreen({ game, paused, active, onEncounter, onArrive,
   }, []); // eslint-disable-line
 
   useEffect(() => { worldRef.current?.setActive(active); }, [active]);
+  // Day/night: the clock only moves on travel, rest or battle, so this is rare
+  // and cheap. The world eases into the new light rather than snapping.
+  useEffect(() => { worldRef.current?.setTimeOfDay(game.minute); }, [game.minute]);
   // travel popup 3D scene
   const travelKey = game.travel ? game.travel.path.join('>') : '';
   useEffect(() => {
@@ -70,9 +73,11 @@ export default function MapScreen({ game, paused, active, onEncounter, onArrive,
     const tier = Math.max(...p.slice(1).map((c, i) => routeTier(p[i], c)));
     const w = new TravelWorld(tvHostRef.current, game.members.map((m) => ({ cls: m.cls, color: CLASSES[m.cls].color })), tier);
     w.jump(tvProgress.current);
+    w.setTimeOfDay(game.minute);
     tvRef.current = w;
     return () => { w.dispose(); tvRef.current = null; };
   }, [travelKey, active]); // eslint-disable-line
+  useEffect(() => { tvRef.current?.setTimeOfDay(game.minute); }, [game.minute]);
   useEffect(() => { tvRef.current?.setProgress(tvRef.current ? (tvProgress.current) : 0, !paused && !alert); }, [paused, alert]);
   useEffect(() => { worldRef.current?.setPath(path); }, [path]);
   useEffect(() => {
@@ -95,7 +100,10 @@ export default function MapScreen({ game, paused, active, onEncounter, onArrive,
     worldRef.current?.setToken(x, y, !!t && !paused);
     return { x, y };
   };
-  useEffect(() => { place(game.travel); graceRef.current = 1.1; if (!game.travel) tvProgress.current = 0; }, [game.travel, game.location, paused]); // eslint-disable-line
+  // Keyed on travelKey, not game.travel: update() clones the state, so the
+  // travel object is a new reference on every node tick. Keying on the object
+  // would reset graceRef each node and quietly suppress ambushes.
+  useEffect(() => { place(game.travel); graceRef.current = 1.1; if (!game.travel) tvProgress.current = 0; }, [travelKey, game.location, paused]); // eslint-disable-line
 
   // travel loop
   useEffect(() => {
@@ -118,10 +126,9 @@ export default function MapScreen({ game, paused, active, onEncounter, onArrive,
           const c = NODE[t.path[t.path.length - 1]];
           worldRef.current?.setToken(c.x, c.y, false);
           worldRef.current?.burstAt(c.x, c.y, 0xf6c453, 70);
-          const nodes = t.path.length - 1;
           elapsedRef.current = 0;
           setSel(null);
-          onArrive(c.id, nodes);
+          onArrive(c.id, t.path.length - 1);
           return;
         }
       }
@@ -162,8 +169,8 @@ export default function MapScreen({ game, paused, active, onEncounter, onArrive,
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
-    return () => { done = true; cancelAnimationFrame(raf); if (travelRef.current) travelRef.current = { ...travelRef.current }; };
-  }, [game.travel, paused, active, alert]); // eslint-disable-line
+    return () => { done = true; cancelAnimationFrame(raf); };
+  }, [travelKey, paused, active, alert]); // eslint-disable-line
 
   // keyboard
   useEffect(() => {
@@ -208,24 +215,6 @@ export default function MapScreen({ game, paused, active, onEncounter, onArrive,
         <button className="btn btn-dark px-2 py-1 text-sm" title="กลับไปที่ปาร์ตี้" onClick={() => { const c = NODE[game.location]; worldRef.current?.focus(c.x, c.y); }}>🎯</button>
       </div>
       {alert && <div className="red-flash pointer-events-none absolute inset-0 bg-red-700" />}
-
-      {/* party mini status */}
-      <div className="absolute left-2 top-[4.75rem] flex flex-col gap-1.5 sm:top-20">
-        {game.members.map((m) => {
-          const s = memberStats(m);
-          return (
-            <div key={m.id} className={`panel flex w-28 items-center gap-1.5 rounded-lg px-1.5 py-1 sm:w-36 ${m.hp <= 0 ? 'opacity-50 grayscale' : ''}`}>
-              <img src={PORTRAIT[m.cls]} alt="" className={`h-8 w-8 rounded-md border object-cover ${m.hp <= 0 ? 'grayscale' : ''}`} style={{ borderColor: CLASSES[m.cls].color, objectPosition: '50% 18%' }} />
-              <div className="min-w-0 flex-1">
-                <div className="flex justify-between text-[12px] leading-tight"><span className="truncate">{m.name}</span><span className="text-amber-300">{m.level}</span></div>
-                <div className="bar mt-0.5"><div style={{ width: `${(m.hp / s.hp) * 100}%`, background: '#22c55e' }} /></div>
-                <div className="bar mt-0.5" style={{ height: 3 }}><div style={{ width: `${(m.mp / s.mp) * 100}%`, background: '#3b82f6' }} /></div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
 
       {/* travel popup */}
       {traveling && game.travel && (() => {

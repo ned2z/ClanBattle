@@ -3,6 +3,7 @@ import BattleScreen from './components/BattleScreen';
 import FxLayer from './components/FxLayer';
 import MapScreen from './components/MapScreen';
 import { CityPanel, Modal, QuestList, RankPanel, randomTip } from './components/Panels';
+import { ClockDial } from './components/ClockDial';
 import PartyMenu from './components/PartyMenu';
 import AdventureLog, { LogTicker } from './components/AdventureLog';
 import StartScreen, { DEFAULT_SETUP, HighScoreTable, type Setup } from './components/StartScreen';
@@ -11,7 +12,7 @@ import { makeEncounter, partyLevel, rint, type BattleState } from './game/engine
 import { fx } from './game/fx';
 import { addLog, advanceTime, applyBattle, arriveCity, arriveNode, completeQuests, loadHS, newGame, rankOf, saveHS, type BattleSummary, type HighScore } from './game/store';
 import { PHOENIX, POTION, add as addItem } from './game/inv';
-import { PHASE, dayPhase, fmtTime, travelMinutes } from './game/time';
+import { PHASE, dayPhase, travelMinutes } from './game/time';
 import type { EnemyGroup, GameState, Travel } from './game/types';
 
 type Screen = 'start' | 'map' | 'battle' | 'gameover';
@@ -78,10 +79,13 @@ export default function App() {
   const onArrive = useCallback((city: string, nodes: number) => {
     const g = gameRef.current; if (!g) return;
     const n = structuredClone(g);
+    // Charge the whole walk here, in one place, for every destination type.
+    // The waypoint branch used to hardcode one node's worth of time, so an
+    // eight-node trek to a village cost the same five minutes as a one-node
+    // hop. Doing it before the arrival handlers also means they observe the
+    // day the journey actually ended on.
+    advanceTime(n, travelMinutes(nodes));
     if (NODE[city].kind !== 'city') {
-      // Advance the clock FIRST: arriveNode does daily rollover checks against
-      // g.day, so it must observe the day the journey actually ended on.
-      advanceTime(n, travelMinutes(1));
       const res = arriveNode(n, city);
       setGame(n); gameRef.current = n;
       res.msgs.forEach((m) => toast(m));
@@ -94,14 +98,12 @@ export default function App() {
       }
       return;
     }
-    // Clock first, then the daily rollover work (quests / rivals) for that day.
-    advanceTime(n, travelMinutes(nodes));
     arriveCity(n, city);
     const sum = { gold: 0, fame: 0, score: 0, levelUps: [] as { name: string; level: number }[], questsDone: [] as string[] };
     completeQuests(n, sum);
     sum.levelUps.forEach((l) => addLog(n, 'level', `${l.name} เลเวลอัปเป็น Lv${l.level}`, '+1 SP'));
     n.score += 10;
-    setGame(n);
+    setGame(n); gameRef.current = n;
     toast(`🏙 มาถึง ${CITY[city].name}`);
     sum.questsDone.forEach((q) => toast(`📜 สำเร็จ: ${q} (+${sum.gold}🪙)`));
     sum.levelUps.forEach((l) => toast(`⬆ ${l.name} Lv${l.level}!`));
@@ -181,13 +183,15 @@ export default function App() {
               <MapScreen game={game} paused={paused || !!panel} active={screen === 'map'} onEncounter={onEncounter} onArrive={onArrive} onStartTravel={onStartTravel} onTreasure={onTreasure} onOpenCity={() => !game.travel && NODE[game.location].kind === 'city' && setPanel('city')} />
               {/* HUD */}
               <div className="absolute inset-x-0 top-0 flex items-start gap-2 p-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
-                <div className="panel flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 rounded-xl px-3 py-1.5 text-xs sm:text-sm">
-                  <span className="max-w-[9rem] truncate font-bold text-amber-300">🚩 {game.partyName}</span>
-                  <span>🪙 <b className="text-amber-200">{game.gold}</b></span>
-                  <span>🎖 <b className="text-orange-300">{game.fame}</b></span>
-                  <span>🏅 <b className="text-lime-300">{game.score}</b></span>
-                  <span className={rank === 1 ? 'shine-text font-bold' : ''}>🏆 #{rank}</span>
-                  <span className="text-stone-400">📅 วันที่ {game.day} · <b style={{ color: clock.color }}>{clock.icon} {fmtTime(game.minute)}</b> {clock.label}</span>
+                <div className="panel flex min-w-0 items-center gap-2.5 rounded-xl py-1 pl-1 pr-3">
+                  <ClockDial day={game.day} minute={game.minute} size={60} phaseIcon={clock.icon} phaseColor={clock.color} />
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 text-xs sm:text-sm">
+                    <span className="max-w-[9rem] truncate font-bold text-amber-300">🚩 {game.partyName}</span>
+                    <span>🪙 <b className="text-amber-200">{game.gold}</b></span>
+                    <span>🎖 <b className="text-orange-300">{game.fame}</b></span>
+                    <span>🏅 <b className="text-lime-300">{game.score}</b></span>
+                    <span className={rank === 1 ? 'shine-text font-bold' : ''}>🏆 #{rank}</span>
+                  </div>
                 </div>
                 <div className="flex gap-1">
                   <button className="btn btn-gold relative px-2.5 py-1.5" title="เมนูปาร์ตี้ (Q)" onClick={() => setPanel('party')}>👥<span className="hidden sm:inline"> Party</span>{game.members.some((m) => m.sp > 0) && <span className="absolute -right-1 -top-1 h-3 w-3 animate-pulse rounded-full bg-red-500" />}</button>

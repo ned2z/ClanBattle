@@ -72,10 +72,13 @@ export default function BattleScreen({ game, group, paused, onFinish, onContinue
 
   useEffect(() => {
     const w = new BattleWorld(hostRef.current!, b.units, (id) => anchors.current[id], group.biome ?? 'plain');
+    w.setTimeOfDay(game.minute);
     worldRef.current = w;
     return () => { w.dispose(); worldRef.current = null; };
-  }, [b]);
+  }, [b]); // eslint-disable-line
   useEffect(() => { if (worldRef.current) worldRef.current.paused = paused; }, [paused]);
+  // A battle rarely crosses dawn, but resting or a long fight can.
+  useEffect(() => { worldRef.current?.setTimeOfDay(game.minute); }, [game.minute]);
 
   const syncStatuses = useCallback(() => {
     const w = worldRef.current; if (!w) return;

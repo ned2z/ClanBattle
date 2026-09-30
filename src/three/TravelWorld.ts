@@ -4,6 +4,7 @@ import { disposeScene } from './MapWorld';
 import { makeCity, makeCloud, makeHero, makePalm, makeRuin, makeTankProp, puffyTree, toonGradient, walkPose, type Rig } from './models';
 import { ParticleSystem } from './particles';
 import { glowTexture, groundTexture, skyTexture, textSprite } from './textures';
+import { TIME_BLEND, blendSkyStyle, skyAt, type SkyStyle } from '../game/sky';
 
 const START = -13, END = 13;
 
@@ -25,6 +26,10 @@ export class TravelWorld {
   private ro: ResizeObserver;
   private dead = false;
   private glow = glowTexture();
+  private hemi!: THREE.HemisphereLight;
+  private key!: THREE.DirectionalLight;
+  private sunS!: THREE.Sprite;
+  private skyMesh!: THREE.Mesh;
 
   constructor(host: HTMLElement, members: { cls: ClassId; color: string }[], tier: number) {
     this.host = host;
@@ -42,10 +47,14 @@ export class TravelWorld {
     this.scene.background = fog;
     const sky = new THREE.Mesh(new THREE.SphereGeometry(120, 20, 12), new THREE.MeshBasicMaterial({ map: skyTexture(), side: THREE.BackSide, fog: false }));
     this.scene.add(sky);
+    this.skyMesh = sky;
     const sun = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glow, color: 0xffb060, fog: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
     sun.scale.set(40, 40, 1); sun.position.set(10, 10, -100); this.scene.add(sun);
-    this.scene.add(new THREE.HemisphereLight(0xdff2ff, 0x7ab060, 1.35));
+    this.sunS = sun;
+    this.hemi = new THREE.HemisphereLight(0xdff2ff, 0x7ab060, 1.35);
+    this.scene.add(this.hemi);
     const key = new THREE.DirectionalLight(0xfff0d8, 2.2);
+    this.key = key;
     key.position.set(6, 10, 8); key.castShadow = true; key.shadow.mapSize.set(1024, 512);
     const sc = key.shadow.camera; sc.left = -20; sc.right = 20; sc.top = 6; sc.bottom = -6;
     this.scene.add(key);
@@ -96,6 +105,51 @@ export class TravelWorld {
   }
 
   setProgress(p: number, moving: boolean) { this.progress = p; this.moving = moving; }
+
+  /** Retarget the lighting; eased in the render loop. */
+  setTimeOfDay(minute: number) { this.targetSky = skyAt(minute); if (!this.skyFrom) this.skyFrom = this.targetSky; }
+
+  private targetSky: SkyStyle | null = null;
+  private skyFrom: SkyStyle | null = null;
+  private skyT = 1;
+
+  private blendSky(dt: number) {
+    const to = this.targetSky;
+    if (!to) return;
+    if (this.skyT < 1) this.skyT = Math.min(1, this.skyT + dt / TIME_BLEND);
+    if (!this.skyFrom) { this.applySky(to); return; }
+    if (this.skyT >= 1) { this.skyFrom = to; this.applySky(to); return; }
+    this.applySky(blendSkyStyle(this.skyFrom, to, this.skyT));
+  }
+
+  private applySky(s: SkyStyle) {
+    const fog = this.scene.fog as THREE.Fog;
+    fog.color.set(s.fog);
+    this.scene.background = new THREE.Color(s.sky);
+    this.hemi.color.set(s.hemiSky);
+    this.hemi.groundColor.set(s.hemiGround);
+    this.hemi.intensity = s.hemiI;
+    this.key.color.set(s.sun);
+    this.key.intensity = s.sunI;
+    this.renderer.toneMappingExposure = s.exposure;
+
+    // The sky sphere keeps its daylight texture; tinting it dark is far
+    // cheaper than regenerating the canvas texture, and the material is
+    // MeshBasicMaterial so nothing lights it.
+    const m = this.skyMesh.material as THREE.MeshBasicMaterial;
+    m.color.set(s.sky);
+    // Night sky is darker than the fog, so lift the texture just enough that
+    // the gradient still reads instead of collapsing to a flat silhouette.
+    m.color.lerp(new THREE.Color(0xffffff), s.darkness * 0.22);
+
+    // Sun becomes a moon: smaller, cooler, dimmer, and lifted a little higher.
+    const night = s.darkness;
+    this.sunS.material.color.set(night > 0.6 ? 0xcfe0ff : 0xffb060);
+    const k = 1 - night * 0.55;
+    this.sunS.scale.set(40 * k, 40 * k, 1);
+    this.sunS.position.set(10, 10 + night * 14, -100);
+  }
+
   jump(p: number) { this.progress = p; this.shown = p; }
   alert() { this.alertS.visible = true; this.alertT = 0; this.moving = false; }
   treasure() { const p = this.leadPos(); p.y += 1.8; this.fire.burst(p, 0xffd35a, 40, { speed: 4, life: 0.9, gravity: 4, size: 0.3 }); }
@@ -116,6 +170,7 @@ export class TravelWorld {
     if (this.dead) return;
     this.raf = requestAnimationFrame(this.loop);
     const dt = Math.max(0, Math.min(0.05, (now - this.last) / 1000)); this.last = now; this.t += dt;
+    this.blendSky(dt);
     this.shown += (this.progress - this.shown) * Math.min(1, dt * 8);
     const lx = START + (END - START) * this.shown;
     this.party.forEach((r, i) => {

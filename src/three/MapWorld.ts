@@ -5,6 +5,7 @@ import type { ClassId } from '../game/types';
 import { makeCloud, makeHero, makeTankProp, mat, toonGradient, treeGeometry, walkPose, waypointGeometry, type Rig } from './models';
 import { ParticleSystem } from './particles';
 import { dashTexture, glowTexture, labelTexture, landTexture, textSprite } from './textures';
+import { TIME_BLEND, blendSkyStyle, skyAt, type SkyStyle } from '../game/sky';
 
 export const LAND_H = 0.8;
 export const MAP_SCALE = 3;
@@ -52,6 +53,8 @@ export class MapWorld {
   private downAt = { x: 0, y: 0, moved: 0 }; private pinch0 = 0;
   private nodeWorld: { id: string; p: THREE.Vector3 }[] = [];
   private sun!: THREE.DirectionalLight;
+  private hemi!: THREE.HemisphereLight;
+  private targetSky: SkyStyle | null = null;
 
   constructor(container: HTMLElement, members: { cls: ClassId; color: string }[]) {
     this.container = container;
@@ -70,7 +73,8 @@ export class MapWorld {
     const fogC = new THREE.Color('#bfe6f5');
     this.scene.background = fogC;
     this.scene.fog = new THREE.Fog(fogC, 60, 180);
-    this.scene.add(new THREE.HemisphereLight(0xdff2ff, 0x6aa050, 1.35));
+    this.hemi = new THREE.HemisphereLight(0xdff2ff, 0x6aa050, 1.35);
+    this.scene.add(this.hemi);
     const sun = new THREE.DirectionalLight(0xfff0d0, 2.2);
     sun.position.set(-22, 45, 20); sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -361,6 +365,42 @@ export class MapWorld {
     this.active = on;
     if (on) { this.last = performance.now(); this.resize(); this.raf = requestAnimationFrame(this.loop); } else cancelAnimationFrame(this.raf);
   }
+
+  /**
+   * Retarget the lighting. The change is eased over TIME_BLEND seconds in the
+   * render loop rather than applied instantly, so crossing from day into
+   * night reads as the light fading instead of a hard cut.
+   */
+  setTimeOfDay(minute: number) { this.targetSky = skyAt(minute); if (!this.skyFrom) this.skyFrom = this.targetSky; }
+
+  private skyFrom: SkyStyle | null = null;
+  private skyT = 1;
+
+  /** Blend the current style toward the target. Safe to call every frame. */
+  private blendSky(dt: number) {
+    const to = this.targetSky;
+    if (!to) return;
+    if (this.skyT < 1) this.skyT = Math.min(1, this.skyT + dt / TIME_BLEND);
+    if (!this.skyFrom) { this.applySky(to); return; }
+    if (this.skyT >= 1) { this.skyFrom = to; this.applySky(to); return; }
+    this.applySky(blendSkyStyle(this.skyFrom, to, this.skyT));
+  }
+
+  private applySky(s: SkyStyle) {
+    // scene.background is Color | Texture; the map view only ever uses a Color.
+    if (this.scene.background instanceof THREE.Color) this.scene.background.set(s.sky);
+    const fog = this.scene.fog as THREE.Fog;
+    fog.color.set(s.fog); fog.near = s.fogNear; fog.far = s.fogFar;
+    this.sun.color.set(s.sun);
+    this.sun.intensity = s.sunI;
+    this.hemi.color.set(s.hemiSky);
+    this.hemi.groundColor.set(s.hemiGround);
+    this.hemi.intensity = s.hemiI;
+    this.renderer.toneMappingExposure = s.exposure;
+    // The sea shader tints toward the fog colour, so it must follow.
+    this.seaMat.uniforms.uFog.value.set(s.fog);
+  }
+
   burstAt(x: number, y: number, color: THREE.ColorRepresentation, n = 40, up = true) {
     this.fire.burst(W2(x, y, LAND_H + 0.6), color, n, { speed: 6, up, gravity: up ? 4 : 0, life: 1.1, size: 0.5 });
   }
@@ -435,6 +475,7 @@ export class MapWorld {
     const dt = Math.max(0, Math.min(0.05, (now - this.last) / 1000));
     this.last = now; this.time += dt; const t = this.time;
     this.seaMat.uniforms.uTime.value = t;
+    this.blendSky(dt);
 
     // leader
     const hr = this.hero.root;

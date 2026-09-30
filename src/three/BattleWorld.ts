@@ -8,6 +8,7 @@ import { CLASS2 } from '../game/data';
 import { disposeScene } from './MapWorld';
 import { grassTuftGeometry, makeCloud, puffyTree, makeBanana, makeBarrel, makeBroadleaf, makeBush, makeDeadTree, makeHero, makeMonster, makePalm, makePine, makePrang, makeRock, makeRuin, mat, walkPose, type Rig } from './models';
 import { ParticleSystem } from './particles';
+import { battleDarken, mixHex, skyAt } from '../game/sky';
 import { glowTexture, groundTexture, magicCircleTexture, skyTexture } from './textures';
 import { toonGradient } from './models';
 import { BIG_TECH, MELEE_TECH, Vfx, easeInOut, easeOut, type Fx, type Tech, type VfxHost } from './vfx';
@@ -76,6 +77,10 @@ export class BattleWorld implements VfxHost {
   private windU = { value: 0 };
   private biome: Biome;
   private lookT = new THREE.Vector3();
+  private skyMesh!: THREE.Mesh;
+  private sunS!: THREE.Sprite;
+  private baseFog = '';
+  private baseSky = '';
 
   constructor(container: HTMLElement, units: Unit[], anchor: (uid: string) => HTMLElement | null | undefined, biome: Biome = 'plain') {
     this.container = container;
@@ -162,8 +167,10 @@ export class BattleWorld implements VfxHost {
     s.background = fogC;
     const sky = new THREE.Mesh(new THREE.SphereGeometry(160, 24, 16), new THREE.MeshBasicMaterial({ map: skyTexture(), side: THREE.BackSide, fog: false, color: B.sky }));
     s.add(sky);
+    this.skyMesh = sky; this.baseFog = B.fog; this.baseSky = '#' + B.sky.toString(16).padStart(6, '0');
     const sun = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: 0xfff4d0, fog: false, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
     sun.scale.set(36, 36, 1); sun.position.set(40, 45, -110); s.add(sun);
+    this.sunS = sun;
     s.add(new THREE.HemisphereLight(0xdff2ff, 0x7ab060, 1.35));
     const key = new THREE.DirectionalLight(0xfff0d8, 2.3);
     key.position.set(-8, 14, 9); key.castShadow = true;
@@ -336,6 +343,25 @@ export class BattleWorld implements VfxHost {
   }
 
   // ------------------------------------------------------------ HOST API
+  /**
+   * Dim the arena for night time — backdrop only, at half strength.
+   *
+   * The map and the travel scene go all the way to the night palette, but a
+   * fight is about reading fast-moving units against the ground, so dimming
+   * it as hard would make the hardest part of the game the least legible.
+   * Lights and character shading are deliberately left alone.
+   */
+  setTimeOfDay(minute: number) {
+    const k = battleDarken(skyAt(minute));
+    if (k <= 0) return;
+    const fog = mixHex(this.baseFog, '#0d1428', k);
+    const sky = mixHex(this.baseSky, '#0d1428', k);
+    if (this.scene.background instanceof THREE.Color) this.scene.background.set(fog);
+    (this.scene.fog as THREE.Fog).color.set(fog);
+    (this.skyMesh.material as THREE.MeshBasicMaterial).color.set(sky);
+    this.sunS.material.color.set(mixHex('#fff4d0', '#9fb8e8', k));
+    this.sunS.scale.set(36 * (1 - k * 0.4), 36 * (1 - k * 0.4), 1);
+  }
   later(sec: number, fn: () => void) { this.timers.push({ t: sec, fn }); }
   addFx(f: Fx) { this.fxs.push(f); }
   shake(m: number, dur = 0.3) {
