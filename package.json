@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "สมรภูมิสยาม — Thai party RPG (roguelite) built with React, TypeScript, Vite and Three.js",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
