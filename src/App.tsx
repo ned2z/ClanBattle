@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import BattleScreen from './components/BattleScreen';
 import FxLayer from './components/FxLayer';
 import MapScreen from './components/MapScreen';
-import { CityPanel, Modal, QuestList, RankPanel, randomTip } from './components/Panels';
+import { Modal, QuestList, RankPanel, randomTip } from './components/Panels';
+import { TownMenu } from './components/TownMenu';
 import { ClockDial } from './components/ClockDial';
 import PartyMenu from './components/PartyMenu';
 import AdventureLog, { LogTicker } from './components/AdventureLog';
@@ -12,8 +13,9 @@ import { makeEncounter, partyLevel, rint, type BattleState } from './game/engine
 import { fx } from './game/fx';
 import { addLog, advanceTime, applyBattle, arriveCity, arriveNode, completeQuests, loadHS, newGame, rankOf, saveHS, type BattleSummary, type HighScore } from './game/store';
 import { PHOENIX, POTION, add as addItem } from './game/inv';
+import { applyDefeat, clearSave, hasSave, readSave } from './game/save';
 import { PHASE, dayPhase, travelMinutes } from './game/time';
-import type { EnemyGroup, GameState, Travel } from './game/types';
+import type { ClassId, EnemyGroup, GameState, Travel } from './game/types';
 
 type Screen = 'start' | 'map' | 'battle' | 'gameover';
 type Panel = null | 'city' | 'party' | 'quests' | 'rank' | 'log';
@@ -54,12 +56,47 @@ export default function App() {
     toast('📜 ภารกิจแรก: ออกเดินทางและปราบศัตรู!');
   }, [toast]);
 
+  /**
+   * Pick the saved journey back up. The envelope is already migrated and
+   * validated by readSave, so a resume either yields a whole state or nothing.
+   */
+  const resume = useCallback(() => {
+    const env = readSave();
+    if (!env) { toast('ไม่พบข้อมูลเซฟ — เริ่มการเดินทางใหม่'); return; }
+    const g = env.state;
+    setSetup({ partyName: g.partyName, classes: g.members.map((m) => m.cls) as ClassId[], names: g.members.map((m) => m.name) });
+    setGame(g); gameRef.current = g;
+    setScreen('map'); setPaused(false); setPanel(null); setGroup(null); setTransition((x) => x + 1); setRunId((x) => x + 1);
+    toast(`📖 กลับมาที่${CITY[g.location]?.name ?? g.location} — วันที่ ${g.day}`);
+  }, [toast]);
+
+  /** Voluntary end of the journey — the only remaining way to reach game over. */
   const endGame = useCallback(() => {
     const g = gameRef.current; if (!g) return;
     const entry: HighScore = { name: g.partyName, score: g.score, fame: g.fame, level: partyLevel(g), rank: rankOf(g), date: new Date().toISOString(), top: g.reachedTop };
     setHs(saveHS(entry)); setLastHS(entry);
+    clearSave();
     setScreen('gameover'); setPaused(false); setPanel(null);
   }, []);
+
+  /**
+   * Losing a fight. Without a save this still ends the run, because there is
+   * nothing to return to. With one, the party is set back on the road at the
+   * nearest city it has visited, minus 30% of the purse.
+   */
+  const onDefeat = useCallback(() => {
+    const g = gameRef.current; if (!g) return;
+    if (!hasSave()) { endGame(); return; }
+    const n = structuredClone(g);
+    const { lost, wakeCity } = applyDefeat(n);
+    setGame(n); gameRef.current = n;
+    setGroup(null); setPaused(false); setPanel(null);
+    setScreen('map');
+    setTimeout(() => {
+      toast(`💀 ปาร์ตี้ล่มสลาย — เสียทอง ${lost.toLocaleString('en-US')} 🪙`);
+      toast(`🏥 ฟื้นที่${CITY[wakeCity]?.name ?? wakeCity} (HP 1) — ไปโรงแรมเถอะ`);
+    }, 400);
+  }, [endGame, toast]);
 
   // ---------- map callbacks
   const onStartTravel = useCallback((path: string[]) => {
@@ -176,7 +213,7 @@ export default function App() {
     <div className="relative h-full w-full overflow-hidden bg-[#0c0f0a]">
       <div ref={shakeRef} className="h-full w-full will-change-transform">
         <>
-          {screen === 'start' && <div key={'s' + transition} className="fade-in h-full w-full"><StartScreen onStart={start} hs={hs} last={setup} /></div>}
+          {screen === 'start' && <div key={'s' + transition} className="fade-in h-full w-full"><StartScreen onStart={start} onResume={resume} hs={hs} last={setup} /></div>}
 
           {game && screen === 'map' && (
             <div key={'run' + runId} className="fade-in relative h-full w-full">
@@ -204,7 +241,7 @@ export default function App() {
               {screen === 'map' && game.stats.battles === 0 && !game.travel && !panel && (
                 <div className="pointer-events-none absolute bottom-[7.5rem] left-1/2 z-10 -translate-x-1/2 animate-bounce whitespace-nowrap rounded-full border border-amber-400 bg-black/80 px-4 py-2 text-sm text-amber-200">👆 แตะเมืองใดก็ได้ แล้วกด ⚔ เดินทาง</div>
               )}
-              {screen === 'map' && panel === 'city' && <CityPanel game={game} update={update} onClose={() => setPanel(null)} toast={toast} />}
+              {screen === 'map' && panel === 'city' && <TownMenu game={game} update={update} onClose={() => setPanel(null)} toast={toast} />}
               {screen === 'map' && panel === 'party' && <PartyMenu game={game} update={update} onClose={() => setPanel(null)} toast={toast} />}
               {panel === 'log' && <AdventureLog game={game} onClose={() => setPanel(null)} />}
               {screen === 'map' && !panel && !game.travel && <LogTicker game={game} onOpen={() => setPanel('log')} />}
@@ -214,7 +251,7 @@ export default function App() {
           )}
 
           {screen === 'battle' && game && group && (
-            <div className="fade-in absolute inset-0"><BattleScreen key={battleKey} game={game} group={group} paused={paused} onFinish={onFinish} onContinue={onContinue} onGameOver={endGame} onPause={() => setPaused(true)} /></div>
+            <div className="fade-in absolute inset-0"><BattleScreen key={battleKey} game={game} group={group} paused={paused} onFinish={onFinish} onContinue={onContinue} onGameOver={onDefeat} onPause={() => setPaused(true)} /></div>
           )}
 
           {screen === 'gameover' && game && (
@@ -250,7 +287,7 @@ export default function App() {
             <div className="mt-2 text-xs text-stone-400">💡 {randomTip()}</div>
             <button className="btn btn-gold mt-4 w-full py-3 text-lg" onClick={() => setPaused(false)}>▶ เล่นต่อ</button>
             <button className="btn btn-red mt-2 w-full" onClick={() => start(setup)}>↻ เริ่มใหม่</button>
-            <button className="btn btn-dark mt-2 w-full" onClick={() => { setPaused(false); endGame(); }}>🏳 ยอมแพ้ (บันทึกคะแนน)</button>
+            <button className="btn btn-dark mt-2 w-full" onClick={() => { setPaused(false); endGame(); }}>🏳 จบการเดินทาง (บันทึกคะแนน)</button>
             <button className="btn btn-dark mt-2 w-full" onClick={() => { setPaused(false); setScreen('start'); }}>🏠 หน้าหลัก</button>
           </div>
         </div>

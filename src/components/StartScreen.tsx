@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { CLASSES, CLASS_IDS, MEMBER_NAMES, OUTLINE, MAP_W, MAP_H } from '../game/data';
+import { CLASSES, CLASS_IDS, CITY, MEMBER_NAMES, OUTLINE, MAP_W, MAP_H } from '../game/data';
 import { shuffle } from '../game/engine';
 import { fx } from '../game/fx';
+import { readSave, savedWhen, type SaveEnvelope } from '../game/save';
+import { fmtTime } from '../game/time';
 import type { HighScore } from '../game/store';
 import type { ClassId } from '../game/types';
 import { KEYART, PORTRAIT } from '../game/portraits';
@@ -30,18 +32,58 @@ export function HighScoreTable({ list, highlight }: { list: HighScore[]; highlig
   );
 }
 
-export default function StartScreen({ onStart, hs, last }: { onStart: (s: Setup) => void; hs: HighScore[]; last: Setup }) {
+/**
+ * The one saved journey, if there is one. Read on mount rather than held in
+ * state: it cannot change while the title screen is up, and re-reading keeps
+ * the component free of an effect that only exists to avoid a stale read.
+ */
+function ResumeCard({ env, onResume }: { env: SaveEnvelope; onResume: () => void }) {
+  const s = env.summary;
+  const when = savedWhen(env.savedAt);
+  return (
+    <div className="panel pop-in rounded-2xl p-3">
+      <div className="mb-2 flex items-center gap-2 text-sm font-bold text-sky-300">
+        <span>💾 การเดินทางที่บันทึกไว้</span>
+        {when && <span className="text-[11px] font-normal text-stone-500">{when}</span>}
+      </div>
+      <div className="mb-2 flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-bold text-amber-200">{s.partyName}</div>
+          <div className="text-[12px] text-stone-400">
+            {CITY[s.location]?.name ?? s.location} · วันที่ {s.day} {fmtTime(s.minute)} · Lv{s.level}
+          </div>
+        </div>
+        <div className="shrink-0 text-right text-[12px]">
+          <div className="text-amber-300">🪙 {s.gold.toLocaleString('en-US')}</div>
+          <div className="text-orange-300">🎖 {s.fame}</div>
+        </div>
+      </div>
+      <button className="btn btn-gold w-full py-2.5" onClick={onResume}>📖 เล่นต่อ</button>
+    </div>
+  );
+}
+
+export default function StartScreen({ onStart, onResume, hs, last }: { onStart: (s: Setup) => void; onResume: () => void; hs: HighScore[]; last: Setup }) {
   const [mode, setMode] = useState<'title' | 'build'>('title');
   const [setup, setSetup] = useState<Setup>(last);
+  const [saved, setSaved] = useState<SaveEnvelope | null>(() => readSave());
 
+  // Coming back here after a run should show whatever is on disk right now,
+  // not whatever was there when the title screen first mounted.
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.tagName === 'INPUT') { if (e.key === 'Enter') onStart(setup); return; }
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onStart(setup); }
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (saved) onResume(); else onStart(setup); }
     };
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
-  }, [setup, onStart]);
+  }, [setup, onStart, onResume, saved]);
+
+  useEffect(() => {
+    const onFocus = () => setSaved(readSave());
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => fx.burst(Math.random() * window.innerWidth, window.innerHeight + 10, Math.random() < 0.5 ? '#f97316' : '#fde047', 2, { speed: 2.5, up: true, g: -0.02, life: 120, size: 2.5 }), 120);
@@ -68,13 +110,14 @@ export default function StartScreen({ onStart, hs, last }: { onStart: (s: Setup)
 
         {mode === 'title' ? (
           <div className="slide-up mt-6 space-y-3">
+            {saved && <ResumeCard env={saved} onResume={onResume} />}
             <button className="btn btn-red pulse-glow w-full py-4 text-2xl" onClick={() => onStart(setup)}>⚔ เริ่มรบทันที</button>
             <button className="btn btn-dark w-full py-3" onClick={() => setMode('build')}>🛠 จัดทีมเอง</button>
             <div className="panel rounded-2xl p-3">
               <div className="mb-2 text-center font-bold text-amber-300">🏆 ตารางคะแนนสูงสุด</div>
               <HighScoreTable list={hs} />
             </div>
-            <div className="text-center text-[13px] text-stone-500">คีย์บอร์ด: Enter เริ่ม • ←→ เลือกเมือง • Enter เดินทาง • P พัก • Q ปาร์ตี้ • Space ความเร็วรบ</div>
+            <div className="text-center text-[13px] text-stone-500">คีย์บอร์ด: Enter {saved ? 'เล่นต่อ' : 'เริ่ม'} • ←→ เลือกเมือง • Enter เดินทาง • P พัก • Q ปาร์ตี้ • Space ความเร็วรบ</div>
           </div>
         ) : (
           <div className="slide-up panel mt-5 space-y-3 rounded-2xl p-4">
