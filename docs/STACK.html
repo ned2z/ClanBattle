@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>สแต็กเทคนิค — สมรภูมิสยาม / Tech Stack — ClanBattle</title>
+<style>
+:root{
+  --bg:#0c0f0a; --panel:#151a12; --panel2:#1c2318; --line:#2f3a28;
+  --tx:#e8efe0; --tx2:#9fb096; --tx3:#6b7a64;
+  --ok:#5fd97a; --wip:#f0b429; --todo:#5a6b50; --block:#e5533d;
+  --acc:#f6c453; --acc2:#7dd3fc; --vio:#a78bfa;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--tx); line-height:1.65;
+  font-family:"Kanit",-apple-system,"Sarabun",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+code,.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:.9em}
+code{background:#0a0d08;border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--acc2)}
+a{color:var(--acc2);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px 100px}
+
+/* ---------- header ---------- */
+header{padding:64px 0 40px;border-bottom:1px solid var(--line);margin-bottom:48px}
+.kicker{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--acc);font-weight:600}
+h1{font-size:clamp(30px,5.5vw,52px);line-height:1.15;margin:14px 0 10px;letter-spacing:-.01em}
+h1 em{font-style:normal;color:var(--acc)}
+.sub{color:var(--tx2);font-size:17px;max-width:660px}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+.chip{font-size:12px;padding:5px 12px;border:1px solid var(--line);border-radius:999px;color:var(--tx2);background:var(--panel)}
+
+/* ---------- nav ---------- */
+nav{position:sticky;top:0;z-index:20;background:rgba(12,15,10,.93);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin-bottom:44px}
+nav .inner{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:6px;padding:9px 20px;overflow-x:auto}
+nav a{white-space:nowrap;padding:6px 12px;border-radius:8px;font-size:14px;color:var(--tx2)}
+nav a:hover{background:var(--panel2);color:var(--tx);text-decoration:none}
+.lang{margin-left:auto;display:flex;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:2px;flex:none}
+.lang button{
+  font:inherit;font-size:12px;font-weight:600;padding:4px 12px;border:0;border-radius:6px;
+  background:transparent;color:var(--tx3);cursor:pointer;transition:background .12s,color .12s;
+}
+.lang button:hover{color:var(--tx)}
+.lang button[aria-pressed="true"]{background:var(--acc);color:#0c0f0a}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+h2{font-size:clamp(22px,3.2vw,30px);margin-bottom:8px;letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px}
+h2 .num{font-size:13px;color:var(--acc);font-weight:600;letter-spacing:.1em;flex:none}
+.lede{color:var(--tx2);margin-bottom:26px;max-width:720px}
+h3{font-size:17px;margin:28px 0 10px;color:var(--tx)}
+
+/* ---------- cards ---------- */
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+.card h3{margin:0 0 6px;font-size:16px}
+.card p{margin:0;color:var(--tx2);font-size:14.5px}
+.card .tag{display:inline-block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin-bottom:8px}
+.card ul{margin:8px 0 0;padding-left:18px;color:var(--tx2);font-size:14px}
+.card li{margin:3px 0}
+
+/* ---------- table ---------- */
+.tbl{width:100%;border-collapse:collapse;font-size:14.5px;margin:8px 0}
+.tbl th{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);color:var(--tx3);font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.tbl td{padding:11px 12px;border-bottom:1px solid rgba(47,58,40,.5);vertical-align:top}
+.tbl tr:last-child td{border-bottom:0}
+.tbl code{white-space:nowrap}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+/* Below this width the four-column tables stop fitting, so let them scroll
+   sideways rather than squash every cell into a tall column. */
+.scroll .tbl{min-width:680px}
+
+/* ---------- misc ---------- */
+pre{background:#0a0d08;border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tx2);font-family:"SF Mono",ui-monospace,Menlo,monospace}
+pre b{color:var(--acc);font-weight:400}
+pre i{color:var(--ok);font-style:normal}
+pre u{color:var(--acc2);text-decoration:none}
+.note{border-left:3px solid var(--acc);background:rgba(246,196,83,.05);padding:14px 18px;border-radius:0 10px 10px 0;margin:18px 0;color:var(--tx2);font-size:15px}
+.note b{color:var(--acc);font-weight:600}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid}
+.p-ok{color:var(--ok);border-color:rgba(95,217,122,.4);background:rgba(95,217,122,.1)}
+.p-wip{color:var(--wip);border-color:rgba(240,180,41,.4);background:rgba(240,180,41,.1)}
+.p-blk{color:var(--block);border-color:rgba(229,83,61,.4);background:rgba(229,83,61,.1)}
+.p-acc{color:var(--acc2);border-color:rgba(125,211,252,.4);background:rgba(125,211,252,.1)}
+.p-vio{color:var(--vio);border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.1)}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:14px 0;font-size:13.5px}
+.flow span{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 11px;color:var(--tx2)}
+.flow span b{color:var(--tx);font-weight:600}
+.flow em{color:var(--tx3);font-style:normal}
+footer{border-top:1px solid var(--line);padding-top:28px;color:var(--tx3);font-size:13.5px}
+footer a{color:var(--tx2)}
+
+@media (max-width:600px){
+  header{padding:40px 0 30px}
+  nav a{font-size:13px;padding:5px 9px}
+  .lang{margin-left:0}
+}
+@media print{
+  nav,.lang{display:none}
+  body{background:#fff;color:#111}
+  section{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="kicker">ClanBattle · Technical Reference</div>
+  <h1 data-en="The Tech Stack <em>of ClanBattle</em>">สแต็กเทคนิค <em>สมรภูมิสยาม</em></h1>
+  <p class="sub" data-en="A complete map of the technology behind ClanBattle — a Thai-themed roguelite party RPG. What each dependency does, why it was chosen, how the code is layered, and which trade-offs were deliberate.">
+    แผนที่เต็มของเทคโนโลยีเบื้องหลัง ClanBattle — เกม RPG ปาร์ตี้ธีมไทยแนว Roguelite แต่ละ dependency ทำอะไร เลือกเพราะอะไร โค้ดซ้อนกันยังไง และการตัดสินใจใดที่ตั้งใจทำ
+  </p>
+  <div class="meta">
+    <span class="chip">v0.1.0</span>
+    <span class="chip">10,644 <span data-en="lines">บรรทัด</span></span>
+    <span class="chip">80 <span data-en="tests">เทสต์</span></span>
+    <span class="chip">26 <span data-en="cities">เมือง</span></span>
+    <span class="chip">785 kB gzip</span>
+    <span class="chip">11 <span data-en="commits">commit</span></span>
+  </div>
+</header>
+
+<nav>
+  <div class="inner">
+    <a href="#glance" data-en="Stack">สแต็ก</a>
+    <a href="#build" data-en="Build">Build</a>
+    <a href="#arch" data-en="Architecture">สถาปัตยกรรม</a>
+    <a href="#layers" data-en="Subsystems">ชั้นระบบ</a>
+    <a href="#content" data-en="Content">เนื้อหา</a>
+    <a href="#data" data-en="Data-driven">Data-driven</a>
+    <a href="#state" data-en="State">สถานะ</a>
+    <a href="#test" data-en="Testing">เทสต์</a>
+    <a href="#cmds" data-en="Commands">คำสั่ง</a>
+    <a href="#decisions" data-en="Decisions">การตัดสินใจ</a>
+    <a href="#history" data-en="History">ประวัติ</a>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-set-lang="th" aria-pressed="true">TH</button>
+      <button type="button" data-set-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </div>
+</nav>
+<!-- ============ 1 STACK AT A GLANCE ============ -->
+<section id="glance">
+  <h2><span class="num">01</span><span data-en="Stack at a glance">สแต็กโดยสรุป</span></h2>
+  <p class="lede" data-en="Eleven runtime and build packages, plus four test packages. Nothing here is speculative — every version below is the one pinned in package.json.">
+    สิบเอ็ดแพ็กเกจสำหรับรันและ build บวกอีกสี่แพ็กเกจสำหรับเทสต์ ไม่มีอะไรในนี้ที่เป็นแค่การคาดเดา ทุกเวอร์ชันคือตัวที่ pin ไว้จริงใน package.json
+  </p>
+
+  <div class="scroll">
+  <table class="tbl">
+    <thead><tr>
+      <th data-en="Layer">ชั้น</th>
+      <th data-en="Package">แพ็กเกจ</th>
+      <th data-en="Version">เวอร์ชัน</th>
+      <th data-en="Role in this project">บทบาทในโปรเจกต์นี้</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="pill p-acc">UI</span></td>
+        <td><code>react</code> / <code>react-dom</code></td>
+        <td>19.2.6</td>
+        <td data-en="The whole 2D interface: screens, HUD, the town board, battle overlays. Components are pure render; all state lives above them.">อินเทอร์เฟซ 2D ทั้งหมด — หน้าจอ, HUD, บอร์ดเมือง, ชั้นทับตอนต่อสู้ คอมโพเนนต์เป็นแค่การเรนเดอร์ สถานะทั้งหมดอยู่ชั้นบน</td>
+      </tr>
+      <tr>
+        <td><span class="pill p-acc">Lang</span></td>
+        <td><code>typescript</code></td>
+        <td>5.9.3</td>
+        <td data-en="Everything under src. strict plus noUnusedLocals and noUnusedParameters, so a dead import is a build error, not a lint warning.">ทุกอย่างใน src เปิด strict พร้อม noUnusedLocals และ noUnusedParameters การ import ที่ไม่ได้ใช้จึงเป็น error ตอน build ไม่ใช่แค่คำเตือนจาก linter</td>
+      </tr>
+      <tr>
+        <td><span class="pill p-acc">Build</span></td>
+        <td><code>vite</code></td>
+        <td>7.3.2</td>
+        <td data-en="Dev server with hot reload, and the production build. Chosen over a heavier bundler because the project is a single-page app with no server.">เซิร์ฟเวอร์ dev พร้อม hot reload และ build สำหรับ production เลือกแทน bundler หนัก ๆ เพราะโปรเจกต์เป็น single-page app ที่ไม่มีเซิร์ฟเวอร์</td>
+      </tr>
+      <tr>
+        <td><span class="pill p-acc">Build</span></td>
+        <td><code>@vitejs/plugin-react</code></td>
+        <td>5.1.1</td>
+        <td data-en="JSX transform and React Fast Refresh.">แปลง JSX และ React Fast Refresh</td>
+      </tr>
+      <tr>
+        <td><span class="pill p-wip">Ship</span></td>
+        <td><code>vite-plugin-singlefile</code></td>
+        <td>2.3.0</td>
+        <td data-en="Inlines all JS and CSS into one index.html. The build output is a single 1.8 MB file you can email or drop on GitHub Pages.">
+          รวม JS และ CSS ทั้งหมดเข้าไฟล์ index.html ไฟล์เดียว ผลลัพธ์คือไฟล์เดียว 1.8 MB ส่งอีเมลหรือวางบน GitHub Pages ได้</td>
+      </tr>
+      <tr>
+        <td><span class="pill p-wip">Style</span></td>
+        <td><code>tailwindcss</code> / <code>@tailwindcss/vite</code></td>
+        <td>4.1.17</td>
+        <td data-en="Tailwind v4 — utilities are written inline in JSX. The theme layer holds only what utilities cannot express: panels, buttons, venue tiles.">
+          Tailwind v4 — utility เขียน inline ใน JSX ชั้น theme เก็บเฉพาะที่ utility ทำไม่ได้ คือ panel, ปุ่ม, venue tile</td>
+      </tr>
+      <tr>
+        <td><span class="pill p-wip">Style</span></td>
+        <td><code>clsx</code> + <code>tailwind-merge</code></td>
+        <td>2.1.1 / 3.4.0</td>
+        <td data-en="Combined into a single cn() helper. twMerge resolves conflicts so a caller-supplied class always beats a default.">
+          รวมเป็นฟังก์ชัน cn() ตัวเดียว twMerge จัดการคลาสชนกัน เพื่อให้คลาสที่ผู้เรียกส่งเข้ามาชนะค่าเริ่มต้นเสมอ</td>
+      </tr>
+      <tr>
+        <td><span class="pill p-vio">3D</span></td>
+        <td><code>three</code></td>
+        <td>^0.186.1</td>
+        <td data-en="The map world, the battle world, and the travel world. Models are generated in code — no mesh files ship with the build.">
+          โลกแผนที่ โลกสนามรบ และฉากเดินทาง โมเดลสร้างจากโค้ด ไม่มีไฟล์ mesh ติดไปกับ build</td>
+      </tr>
+      <tr>
+        <td><span class="pill p-ok">Test</span></td>
+        <td><code>vitest</code></td>
+        <td>5.0.2</td>
+        <td data-en="Runs on the same Vite transform pipeline as the app, so a module that builds also tests — no separate tsconfig juggling.">
+          ใช้ pipeline ของ Vite ตัวเดียวกับแอป โมดูลที่ build ผ่านก็เทสต์ผ่าน ไม่ต้องจัดการ tsconfig แยก</td>
+      </tr>
+      <tr>
+        <td><span class="pill p-ok">Test</span></td>
+        <td><code>jsdom</code></td>
+        <td>29.1.1</td>
+        <td data-en="DOM for the component suites only. Opt-in per file, so the pure game modules never pay for it.">
+          DOM สำหรับเฉพาะเทสต์คอมโพเนนต์ เปิดใช้รายไฟล์ โมดูลเกมล้วนจึงไม่ต้องเสียเวลา</td>
+      </tr>
+      <tr>
+        <td><span class="pill p-ok">Test</span></td>
+        <td><code>@testing-library/react</code> / <code>@testing-library/dom</code></td>
+        <td>16.3.3 / 10.4.2</td>
+        <td data-en="Installed for queries and accessibility helpers. The current suites drive the DOM through react-dom/client and act() directly, which is enough for asserting what renders.">
+          ติดตั้งไว้สำหรับ query และตัวช่วยเรื่อง accessibility เทสต์ปัจจุบันขับ DOM ผ่าน react-dom/client กับ act() โดยตรง ซึ่งเพียงพอสำหรับการยืนยันว่าอะไรถูกเรนเดอร์</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="note" data-en="<b>Nothing else is in the runtime.</b> No state library, no router, no UI kit, no animation library, no icon package. A 498-line BattleScreen and a 781-line BattleWorld are hand-written rather than assembled from a framework — which is why the whole build fits in a single file, and also why the typecheck is strict enough to hold it together.">
+    <b>ไม่มีอะไรอื่นใน runtime</b> ไม่มี state library, ไม่มี router, ไม่มี UI kit, ไม่มี animation library, ไม่มีแพ็กเกจไอคอน BattleScreen 498 บรรทัดกับ BattleWorld 781 บรรทัดเขียนเอง ไม่ได้ประกอบจากเฟรมเวิร์ก นั่นคือเหตุผลที่ build ทั้งหมดยัดลงไฟล์เดียวได้ และก็เป็นเหตุผลที่ typecheck ต้องเข้มพอจะถือมันไว้ด้วยกันได้
+  </div>
+</section>
+
+<!-- ============ 2 BUILD ============ -->
+<section id="build">
+  <h2><span class="num">02</span><span data-en="Build pipeline">ขั้นตอนการ build</span></h2>
+  <p class="lede" data-en="One config file, three plugins, no environment branching. The whole game ships as a single HTML file with everything inlined.">
+    มี config ไฟล์เดียว สามปลั๊กอิน ไม่มีการแตกแขนงตาม environment เกมทั้งเกมส่งออกเป็นไฟล์ HTML ไฟล์เดียวที่รวมทุกอย่างไว้ข้างใน
+  </p>
+
+<pre><b>// vite.config.ts</b>
+export default defineConfig({
+  plugins: [<i>react()</i>, <i>tailwindcss()</i>, <i>viteSingleFile()</i>],
+  resolve: { alias: { <u>"@"</u>: path.resolve(__dirname, <u>"src"</u>) } },
+});</pre>
+
+  <h3 data-en="What each plugin does">แต่ละปลั๊กอินทำอะไร</h3>
+  <div class="grid g3">
+    <div class="card">
+      <span class="tag">Transform</span>
+      <h3>react()</h3>
+      <p data-en="Compiles JSX and wires up Fast Refresh, so an edit to a component updates the screen without losing state.">
+        คอมไพล์ JSX และเชื่อม Fast Refresh การแก้คอมโพเนนต์แล้วหน้าจออัปเดตโดยไม่ทำสถานะหาย</p>
+    </div>
+    <div class="card">
+      <span class="tag">Style</span>
+      <h3>tailwindcss()</h3>
+      <p data-en="Tailwind v4 runs as a Vite plugin rather than a PostCSS step. Scans sources and emits only the utilities actually used.">
+        Tailwind v4 ทำงานเป็นปลั๊กอิน Vite ไม่ใช่ขั้นตอน PostCSS สแกนซอร์สแล้วปล่อยเฉพาะ utility ที่ถูกใช้จริง</p>
+    </div>
+    <div class="card">
+      <span class="tag">Ship</span>
+      <h3>viteSingleFile()</h3>
+      <p data-en="Collapses every chunk and stylesheet into the HTML. This is why a game with 3D, art and logic is still one portable file.">
+        รวมทุก chunk และ stylesheet เข้า HTML นี่คือเหตุผลที่เกมที่มีทั้ง 3D อาร์ต และตรรกะ ยังเป็นไฟล์เดียวที่พกพาได้</p>
+    </div>
+  </div>
+
+  <h3 data-en="The build result">ผลลัพธ์ของ build</h3>
+  <div class="scroll">
+  <table class="tbl">
+    <thead><tr>
+      <th data-en="Metric">ตัวชี้วัด</th><th data-en="Value">ค่า</th><th data-en="Note">หมายเหตุ</th>
+    </tr></thead>
+    <tbody>
+      <tr><td data-en="Output">ผลลัพธ์</td><td><code>dist/index.html</code></td><td data-en="One file. No JS, no CSS, no assets alongside it.">ไฟล์เดียว ไม่มี JS, CSS หรือ asset เกาะไปด้วย</td></tr>
+      <tr><td data-en="Raw size">ขนาดดิบ</td><td>1,815.97 kB</td><td data-en="Includes Three.js and portraits inlined as base64.">รวม Three.js และภาพพอร์ตแทรทที่เข้ารหัส base64</td></tr>
+      <tr><td data-en="Gzipped">บีบอัดแล้ว</td><td>785.28 kB</td><td data-en="What actually travels over a network.">ขนาดที่ส่งผ่านเครือข่ายจริง ๆ</td></tr>
+      <tr><td data-en="Build time">เวลา build</td><td>~1.1 s</td><td data-en="85 modules transformed.">แปลง 85 โมดูล</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3 data-en="Assets deliberately left out of the repo">สินทรัพย์ที่ตั้งใจไม่เก็บใน repo</h3>
+  <p data-en="The 18 MB of original 768×1376 PNG portraits are gitignored. What the runtime actually loads is src/game/portraitData.ts — the same images already inlined as base64, so the build stays a single file and the repository stays small. Originals live on disk only.">
+    ภาพพอร์ตต้นฉบับขนาด 768×1376 รวม 18 MB ถูก gitignore ไว้ สิ่งที่ runtime โหลดจริงคือ <code>src/game/portraitData.ts</code> ซึ่งเป็นภาพชุดเดียวกันที่ inline เป็น base64 แล้ว ทำให้ build ยังเป็นไฟล์เดียวและ repo เล็ก ไฟล์ต้นฉบับอยู่แค่บนดิสก์
+  </p>
+</section>
+
+<!-- ============ 3 ARCHITECTURE ============ -->
+<section id="arch">
+  <h2><span class="num">03</span><span data-en="Architecture">สถาปัตยกรรม</span></h2>
+  <p class="lede" data-en="Five directories, 10,644 lines. The organising rule is one sentence: game logic never imports React, and React components never contain game rules.">
+    ห้าไดเรกทอรี 10,644 บรรทัด หลักการจัดโครงมีประโยคเดียว ตรรกะเกมไม่เคย import React และคอมโพเนนต์ React ไม่เคยเก็บกฎของเกม
+  </p>
+
+<pre>src/
+├── <b>main.tsx</b>              11    <i>entry: createRoot + StrictMode</i>
+├── <b>App.tsx</b>              304    <i>all state, all screen routing</i>
+├── <b>index.css</b>            ~90    <i>theme layer: panels, buttons, venue tiles</i>
+│
+├── <u>game/</u>              2,938    <i>pure logic — zero React imports</i>
+│   ├── types.ts                   <i>every shared type</i>
+│   ├── data.ts          480       <i>cities, classes, skills, map graph</i>
+│   ├── engine.ts        515       <i>Dijkstra, ATB battle, items, drops</i>
+│   ├── store.ts         370       <i>state transitions, high scores</i>
+│   ├── time.ts                   <i>clock, phases, travel &amp; battle duration</i>
+│   ├── inv.ts                    <i>scalable inventory</i>
+│   ├── save.ts          197       <i>one-slot save, defeat resolution</i>
+│   ├── news.ts          177       <i>daily paper as a pure function of day</i>
+│   ├── market/price.ts           <i>pricing, history, trends</i>
+│   ├── market/prng.ts            <i>hash-based deterministic noise</i>
+│   ├── economy/craft.ts          <i>recipe checks and crafting</i>
+│   ├── fx.ts                      <i>2D particle &amp; number effects</i>
+│   ├── sky.ts                    <i>time-of-day sky blending</i>
+│   └── portraits.ts / portraitData.ts  <i>class art, inlined base64</i>
+│
+├── <u>three/</u>             3,200    <i>3D worlds, generated entirely in code</i>
+│   ├── BattleWorld.ts    781       <i>largest file in the project</i>
+│   ├── models.ts         625       <i>procedural heroes, monsters, props</i>
+│   ├── MapWorld.ts       549       <i>world map, cities, roads</i>
+│   ├── TravelWorld.ts             <i>the walk between nodes</i>
+│   ├── particles.ts                <i>GPU-friendly particle system</i>
+│   ├── textures.ts                 <i>canvas-generated textures</i>
+│   ├── vfx.ts                     <i>3D effect host</i>
+│   ├── landmarks.ts                <i>unique city monuments</i>
+│   └── camera/                    <i>director, spring, shots, input</i>
+│
+├── <u>components/</u>        3,025    <i>React UI — render only</i>
+│   ├── StartScreen.tsx   133       <i>title, party setup, resume card</i>
+│   ├── MapScreen.tsx               <i>map + HUD</i>
+│   ├── BattleScreen.tsx  498       <i>turn order, skills, results</i>
+│   ├── TownMenu.tsx       423       <i>the six-venue board</i>
+│   ├── PartyMenu.tsx      446       <i>growth, skills, equipment</i>
+│   ├── MarketPage.tsx      285       <i>materials, price history</i>
+│   ├── Panels.tsx                   <i>Modal, quests, ranking</i>
+│   ├── AdventureLog.tsx             <i>journal + ticker</i>
+│   └── ClockDial, FxLayer, Sparkline, Icons
+│
+├── <u>data/</u>              1,159    <i>pure data, no behaviour</i>
+│   ├── economy/                    <i>12 materials, 15 craft recipes</i>
+│   └── fx/                         <i>32 effect families as data</i>
+│
+└── <u>utils/</u>                6    <i>cn(): clsx + tailwind-merge</i></pre>
+
+  <div class="note" data-en="<b>Why the split matters.</b> Because game/ imports nothing from React, the rules can be tested in a plain Node environment with no DOM, and a bug in combat maths never requires rendering anything to find. The cost is that every state change has to be threaded through App.tsx by hand — which is exactly the price paid for being able to say the UI contains no rules.">
+    <b>ทำไมการแยกนี้สำคัญ</b> เพราะ game/ ไม่ import อะไรจาก React กฎของเกมจึงเทสต์ได้ใน Node ล้วน ไม่ต้องมี DOM และบั๊กในสูตรต่อสู้ไม่ต้องเรนเดอร์อะไรเพื่อหาสาเหตุ ต้นทุนคือทุกการเปลี่ยนสถานะต้องส่งผ่าน App.tsx ด้วยมือ ซึ่งคือราคาที่จ่ายเพื่อยืนยันได้ว่า UI ไม่มีกฎของเกมอยู่เลย
+  </div>
+
+  <h3 data-en="How a turn flows through the layers">การไหลของหนึ่งเทิร์นผ่านแต่ละชั้น</h3>
+  <div class="flow">
+    <span><b>component</b> — a click</span><em>→</em>
+    <span><b>App.tsx</b> — update(fn)</span><em>→</em>
+    <span><b>game/engine</b> — the rule</span><em>→</em>
+    <span><b>game/store</b> — apply, log</span><em>→</em>
+    <span><b>three/</b> — the 3D reaction</span><em>→</em>
+    <span><b>component</b> — re-render</span>
+  </div>
+  <p data-en="No layer reaches past its neighbour. The component never mutates the game state itself, and the engine never knows a React component exists.">
+    ไม่มีชั้นไหนข้ามเข้าไปเรียกชั้นที่ไม่ใช่เพื่อนบ้าน คอมโพเนนต์ไม่แก้สถานะเกมเอง และ engine ไม่รู้จักคิดว่ามีคอมโพเนนต์ React อยู่
+  </p>
+</section>
+
+<!-- ============ 4 SUBSYSTEMS ============ -->
+<section id="layers">
+  <h2><span class="num">04</span><span data-en="Runtime subsystems">ชั้นระบบขณะรัน</span></h2>
+  <p class="lede" data-en="Four subsystems, each with one job. Listed with the module that owns it, so a change has an obvious home.">
+    สี่ระบบย่อย แต่ละอันมีหน้าที่เดียว ระบุโมดูลที่ดูแลไว้ เพื่อให้การแก้ไขมีที่ไปอย่างชัดเจน
+  </p>
+
+  <h3><span class="pill p-acc">UI</span> <span data-en="The 2D interface">อินเทอร์เฟซ 2D</span></h3>
+  <div class="card">
+    <p data-en="Screens are switched by a single string state in App.tsx — start, map, battle, gameover — and each gets a transition key so React remounts it and replays the entry animation. Modals go through one Modal component with a stack prop, which is what produces the layered-paper look: two offset sheets behind the window rather than two separate dialogs.">
+      การสลับหน้าจอใช้ state เป็นสตริงตัวเดียวใน App.tsx ได้แก่ start, map, battle, gameover และแต่ละหน้ามี transition key เพื่อให้ React remount แล้วเล่นแอนิเมชันเข้าใหม่ หน้าต่างซ้อนทั้งหมดผ่านคอมโพเนนต์ Modal ตัวเดียวที่มี prop stack ซึ่งคือที่มาของหน้าตากระดาษซ้อนชั้น คือแผ่นเบี่ยงสองแผ่นอยู่ข้างหลังหน้าต่าง ไม่ใช่สองกล่องโดดวาง
+    </p>
+    <ul>
+      <li data-en="TownMenu — six venue tiles, the guild sub-menu, the inn save slot">TownMenu — ช่องเมืองหกช่อง เมนูกิลด์ย่อย ช่องบันทึกเกมที่โรงแรม</li>
+      <li data-en="MapScreen — the 3D map, node selection, travel HUD">MapScreen — แผนที่ 3D การเลือกจุด HUD การเดินทาง</li>
+      <li data-en="BattleScreen — turn order, skill use, results, cut-ins">BattleScreen — ลำดับเทิร์น การใช้สกิล ผลรวม cut-in</li>
+      <li data-en="PartyMenu — stats, skill trees, gear, inventory">PartyMenu — สถานะ แผนผังสกิล อุปกรณ์ กระเป๋า</li>
+    </ul>
+  </div>
+
+  <h3><span class="pill p-blk">Rules</span> <span data-en="Game logic">ตรรกะเกม</span></h3>
+  <div class="card">
+    <p data-en="One GameState object, mutated in place through an update(fn) callback. No reducers, no immutability, no diffing. State is a plain serialisable object, which is what makes saving it a one-line JSON.stringify and makes every mechanic testable without a renderer.">
+      เป็น object GameState ตัวเดียว แก้ที่เดิมผ่าน callback update(fn) ไม่มี reducer ไม่มี immutable ไม่มีการ diff สถานะเป็น object ธรรมดาที่ serialize ได้ นั่นคือเหตุผลที่การบันทึกเป็นแค่ JSON.stringify บรรทัดเดียว และทุกกลไกเทสต์ได้โดยไม่ต้องเรนเดอร์
+    </p>
+    <ul>
+      <li><code>engine.ts</code> <span data-en="— Dijkstra pathfinding, ATB battle loop, stat scaling, loot rolls">— Dijkstra หาเส้นทาง ลูปต่อสู้แบบ ATB การคำนวณสถานะ การสุ่มของ</span></li>
+      <li><code>store.ts</code> <span data-en="— newGame, arriveCity, applyBattle, advanceTime, rankOf">— newGame, arriveCity, applyBattle, advanceTime, rankOf</span></li>
+      <li><code>time.ts</code> <span data-en="— one clock for the whole game: travel, battles, rest, day rollover">— นาฬิกาตัวเดียวของทั้งเกม การเดินทาง การต่อสู้ การพักผ่อน การข้ามวัน</span></li>
+      <li><code>inv.ts</code> <span data-en="— a Record keyed by item, so stack sizes are not capped by a fixed array">— Record ที่ key ด้วยไอเทม จำนวนกองจึงไม่ติดลิมิตอาร์เรย์คงที่</span></li>
+    </ul>
+  </div>
+
+  <h3><span class="pill p-vio">3D</span> <span data-en="The three worlds">โลกสามฉาก</span></h3>
+  <div class="card">
+    <p data-en="Three separate scenes, only one mounted at a time. Every model, texture and animation is generated at runtime — a hero is a set of primitives posed by a rig, a city is a landmark assembled from geometry, and a texture is drawn onto a canvas. That is why no art files ship.">
+      สามฉากแยกกัน มีแค่ฉากเดียวที่ mount พร้อมกัน โมเดล เท็กซ์เจอร์ และแอนิเมชันทุกอย่างสร้างตอนรัน ตัวละครคือชุด primitive ที่ถูกจัดท่าด้วย rig เมืองคือแลนด์มาร์กที่ประกอบจากเรขาคณิต เท็กซ์เจอร์คือการวาดลง canvas นี่คือเหตุผลที่ไม่มีไฟล์อาร์ตติดไปด้วย
+    </p>
+    <ul>
+      <li><code>BattleWorld</code> <span data-en="— 781 lines, the largest file; runs the skill choreography">— 781 บรรทัด ไฟล์ที่ใหญ่ที่สุด เป็นที่รันลำดับการแสดงสกิล</span></li>
+      <li><code>MapWorld</code> <span data-en="— terrain, roads, 26 city landmarks, day/night lighting">— ภูมิประเทศ ถนน แลนด์มาร์ก 26 เมือง แสงเปลี่ยนตามเวลา</span></li>
+      <li><code>TravelWorld</code> <span data-en="— the walk between two nodes, reusing the battle world’s rig">— การเดินระหว่างสองจุด ใช้ rig ชุดเดียวกับสนามรบ</span></li>
+    </ul>
+  </div>
+
+  <h3><span class="pill p-ok">Data</span> <span data-en="Content as data">เนื้อหาในรูปข้อมูล</span></h3>
+  <div class="card">
+    <p data-en="Balance numbers, effect choreography and recipes live in plain TypeScript data files with no behaviour attached. Adding a skill or a recipe is adding an entry to an array, never editing a switch statement.">
+      ตัวเลขสมดุล ลำดับการแสดงเอฟเฟ็กซ์ และสูตรคราฟต์ อยู่ในไฟล์ข้อมูล TypeScript ธรรมดาที่ไม่มีพฤติกรรมติดมา เพิ่มสกิลหรือสูตรคือเพิ่มหนึ่งรายการในอาร์เรย์ ไม่ใช่ไปแก้ switch
+    </p>
+    <ul>
+      <li><code>data/economy/</code> <span data-en="— 12 materials with drop tables, 15 craft recipes">— วัตถุดิบ 12 ชนิดพร้อมตารางดรอป 15 สูตรคราฟต์</span></li>
+      <li><code>data/fx/</code> <span data-en="— 32 effect families, 52 primitives, feature flags">— เอฟเฟ็กซ์ 32 ตระกูล primitive 52 ตัว และ feature flags</span></li>
+      <li><code>game/data.ts</code> <span data-en="— cities, classes, skills, and the generated road graph">— เมือง อาชีพ สกิล และกราฟถนนที่ generate ขึ้น</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ 5 CONTENT ============ -->
+<section id="content">
+  <h2><span class="num">05</span><span data-en="Game content">เนื้อหาเกม</span></h2>
+  <p class="lede" data-en="Every number below is counted from the source, not from a design document. Where content is generated rather than written by hand, that is called out.">
+    ทุกตัวเลขข้างล่างนับจากซอร์สจริง ไม่ได้มาจากเอกสารออกแบบ ถ้าเนื้อหาตัวไหนถูก generate ขึ้นมาแทนที่จะเขียนเอง จะระบุไว้ให้
+  </p>
+
+  <div class="scroll">
+  <table class="tbl">
+    <thead><tr>
+      <th data-en="Content">เนื้อหา</th><th data-en="Count">จำนวน</th><th data-en="Source">ที่มา</th><th data-en="Notes">หมายเหตุ</th>
+    </tr></thead>
+    <tbody>
+      <tr><td data-en="Cities">เมือง</td><td><b>26</b></td><td><code>data.ts</code></td><td data-en="Real Thai geography: projected from lon/lat, tiered 1–8.">ภูมิประเทศไทยจริง คำนวณจาก lon/lat ระดับ 1–8</td></tr>
+      <tr><td data-en="Road edges">เส้นทาง</td><td><b>36</b></td><td><code>ROADS</code></td><td data-en="Between cities; waypoints are then generated along each.">ระหว่างเมือง จุดผ่านทางถูก generate ต่อยอดจากนี้</td></tr>
+      <tr><td data-en="Classes">อาชีพ</td><td><b>6</b></td><td><code>CLASSES</code></td><td data-en="Each with base stats, per-level growth, and its own skill list.">แต่ละอันมีสถานะปลักษณ์ การเติบโตต่อเลเวล และสกิลของตัวเอง</td></tr>
+      <tr><td data-en="Skills">สกิล</td><td><b>68</b></td><td><code>SKILLS</code></td><td data-en="MP cost, cooldown, element, and an effect list.">ค่า MP คูลดาวน์ ธาตุ และรายการเอฟเฟ็กต์</td></tr>
+      <tr><td data-en="Equipment">อุปกรณ์</td><td><b>15</b></td><td><code>EQUIPS</code></td><td data-en="3 slots × 5 tiers, generated in a loop.">3 ช่อง × 5 ระดับ สร้างจากลูป</td></tr>
+      <tr><td data-en="Rarities">ความหายาก</td><td><b>3</b></td><td><code>RARITY</code></td><td data-en="Common 1×, Rare 1.3×, Mythic 1.65×.">ธรรมดา 1× หายาก 1.3× มหากาพย์ 1.65×</td></tr>
+      <tr><td data-en="Consumables">ไอเทมใช้แล้วหมด</td><td><b>4</b></td><td><code>ITEMS</code></td><td data-en="Potion, Hi-Potion, Ether, Phoenix Feather.">ยาสมุนไพร ยาหม้อใหญ่ น้ำมนต์ ขนนกการเวก</td></tr>
+      <tr><td data-en="Materials">วัตถุดิบ</td><td><b>12</b></td><td><code>data/economy/</code></td><td data-en="Each with tier, base value, and which monsters drop it.">แต่ละชนิดมีระดับ มูลค่าฐาน และมอนสเตอร์ที่ดรอป</td></tr>
+      <tr><td data-en="Craft recipes">สูตรคราฟต์</td><td><b>15</b></td><td><code>data/economy/</code></td><td data-en="Gives harvested materials a purpose.">ทำให้วัตถุดิบที่เก็บมามีความหมาย</td></tr>
+      <tr><td data-en="Landmarks">แลนด์มาร์ก</td><td><b>26</b></td><td><code>Landmark</code></td><td data-en="One unique monument per city — the Big Buddha, Phra Nang, the golden mountain.">หนึ่งอนุสรณ์เฉพาะต่อเมือง พระใหญ่ พระนาง ภูเขาทอง</td></tr>
+      <tr><td data-en="Waypoint kinds">จุดผ่านทาง</td><td><b>6</b></td><td><code>KIND_WEIGHT</code></td><td data-en="Village, shrine, fort, camp, ruin, lake — weighted.">หมู่บ้าน ศาลเจ้า ป้อม ค่าย ซากปรักหักพัง ทะเลสาบ ถ่วงน้ำหนัก</td></tr>
+      <tr><td data-en="Effect families">ตระกูลเอฟเฟ็กซ์</td><td><b>32</b></td><td><code>data/fx/</code></td><td data-en="One recipe each, driving the 3D choreography.">หนึ่งสูตรต่อหนึ่งตระกูล ขับเคลื่อนการแสดงผล 3D</td></tr>
+      <tr><td data-en="Effect primitives">primitive เอฟเฟ็กซ์</td><td><b>52</b></td><td><code>PRIMS</code></td><td data-en="Reusable building blocks the recipes compose.">บล็อกสร้างซ้ำใช้ที่สูตรประกอบกัน</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3 data-en="The six classes">อาชีพทั้งหก</h3>
+  <div class="grid g3">
+    <div class="card"><h3 data-en="Shieldbearer">🛡️ อัศวินโล่</h3><p data-en="Front line. Taunts, guards, soaks the hit that would have killed someone behind.">
+      แนวหน้า ยั่วยุ ป้องกัน รับดรอปที่มิฉาฉากมาแทนเพื่อน</p></div>
+    <div class="card"><h3 data-en="Greatsword">⚔️ นักรบดาบใหญ่</h3><p data-en="Highest attack. Trades safety for damage, and doubles down when hurt.">
+      พลังโจมตีสูงสุด แลกความปลอดภัยกับดาเมจ ยิ่งเจ็บยิ่งแรง</p></div>
+    <div class="card"><h3 data-en="Knife Assassin">🔪 นักฆ่ามีด</h3><p data-en="Speed and crit. Opens with a preemptive strike and finishes wounded targets.">
+      ความเร็วและคริติก เปิดด้วยการโจมตีก่อน และจัดการเป้าหมายที่บาดเจ็บ</p></div>
+    <div class="card"><h3 data-en="Dark Sorcerer">🌑 จอมเวทย์ดำ</h3><p data-en="Hard damage through resistances. The mage that ignores armour.">
+      ดาเมจทะลุการต้านทาน นักเวทที่มองข้ามเกราะ</p></div>
+    <div class="card"><h3 data-en="Light Cleric">✨ นักบวชเวทย์ขาว</h3><p data-en="The healer. Revival and party-wide restoration, which is what makes a wipe survivable.">
+      ผู้รักษา ชุบชีวิตและฟื้นทั้งปาร์ตี้ ซึ่งคือสิ่งที่ทำให้การพ่ายแพ้ยังรอด</p></div>
+    <div class="card"><h3 data-en="Merchant">💰 พ่อค้าผจญภัย</h3><p data-en="Buys at a discount. The only class that changes the economy rather than the fight.">
+      ซื้อได้ถูก อาชีพเดียวที่เปลี่ยนเศรษฐกิจ ไม่ใช่การต่อสู้</p></div>
+  </div>
+</section>
+
+<!-- ============ 6 DATA-DRIVEN ============ -->
+<section id="data">
+  <h2><span class="num">06</span><span data-en="Data-driven subsystems">ระบบที่ขับเคลื่อนด้วยข้อมูล</span></h2>
+  <p class="lede" data-en="Two subsystems started as code and were deliberately moved into data. Both had the same problem: adding content meant editing logic.">
+    สองระบบที่เริ่มต้นเป็นโค้ดแล้วถูกย้ายไปเป็นข้อมูลโดยเจตนา ทั้งคู่มีปัญหาเดียวกัน การเพิ่มเนื้อหาแปลว่าต้องไปแก้ตรรกะ
+  </p>
+
+  <h3 data-en="The effect layer">ชั้นเอฟเฟ็กซ์</h3>
+  <p data-en="Every combat effect reads as a short program. A skill says “fireball” and the data resolves that into a sequence of primitives — a launch, an arc, a burst, an impact flash, a decal — each with its own timing. The 3D layer knows how to run a primitive and has no idea what a fireball is.">
+    ทุกเอฟเฟ็กต์ในการต่อสู้อ่านออกเป็นโปรแกรมสั้น ๆ สกิลบอกว่า “fireball” แล้วข้อมูลจะแปลงเป็นลำดับของ primitive ทั้งหมด การปล่อย วิ่งโค้ง ระเบิด แสงวูบ รอยไหม้ แต่ละอย่างมีจังหวะของตัวเอง ชั้น 3D รู้วิธีรัน primitive และไม่รู้ว่า fireball คืออะไร
+  </p>
+  <div class="flow">
+    <span><b>Tech</b> — 32 names, a string union</span><em>→</em>
+    <span><b>Recipe</b> — steps per family</span><em>→</em>
+    <span><b>Primitive</b> — 52 blocks</span><em>→</em>
+    <span><b>Feature flag</b> — quality gates</span><em>→</em>
+    <span><b>FxRunner</b> — executes</span>
+  </div>
+  <p data-en="Arguments are plain numbers or tiny expressions like &quot;$T*0.5&quot;, so recipes stay data and never become functions. That keeps the whole layer inspectable, diffable, and reviewable as a table.">
+    อาร์กิวเมนต์เป็นตัวเลขธรรมดาหรือนิพจน์เล็ก ๆ แบบ “$T*0.5” สูตรจึงยังเป็นข้อมูล ไม่กลายเป็นฟังก์ชัน ทั้งชั้นจึงตรวจดูได้ เปรียบเทียบได้ และรีวิวเป็นตารางได้
+  </p>
+
+  <h3 data-en="The camera module">โมดูลกล้อง</h3>
+  <p data-en="Split into five files so a shot change never touches a spring calculation. The director owns what the camera is doing, the spring owns how it gets there, shots.ts holds the framings, and input.ts handles the drag.">
+    แยกเป็นห้าไฟล์ เพื่อให้การเปลี่ยนมุมกล้องไม่ไปแตะสมการ spring director ดูแลว่ากล้องกำลังทำอะไร spring ดูแลว่ามันจะไปถึงตรงนั้นยังไง shots.ts เก็บองค์ประกอบภาพ และ input.ts จัดการการลาก
+  </p>
+  <div class="scroll">
+  <table class="tbl">
+    <thead><tr><th data-en="File">ไฟล์</th><th data-en="Lines">บรรทัด</th><th data-en="Owns">ดูแล</th></tr></thead>
+    <tbody>
+      <tr><td><code>director.ts</code></td><td>128</td><td data-en="CameraDirector — the state machine over shots">CameraDirector — เครื่องสถานะเหนือชุดมุมกล้อง</td></tr>
+      <tr><td><code>input.ts</code></td><td>87</td><td data-en="Drag and orbit">การลากและหมุนรอบ</td></tr>
+      <tr><td><code>spring.ts</code></td><td>53</td><td data-en="Critically damped interpolation">การโต้ตอบแบบ damping วิกฤต</td></tr>
+      <tr><td><code>shots.ts</code></td><td>16</td><td data-en="Named framings">มุมที่ตั้งชื่อไว้</td></tr>
+      <tr><td><code>types.ts</code></td><td>15</td><td data-en="Shared shapes">รูปร่างข้อมูลร่วมกัน</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="note" data-en="<b>The pattern generalises.</b> The rule is the same in both cases: anything that describes what should happen belongs in data, and code is reserved for what makes it happen. A shot is data, a spring is code. A fireball is data, a particle burst is code.">
+    <b>รูปแบบนี้ใช้ได้ทั่วไป</b> หลักการเหมือนกันทั้งสองกรณี สิ่งที่บรรยายว่าควรเกิดอะไรขึ้นเป็นข้อมูล ส่วนโค้ดเก็บไว้สำหรับสิ่งที่ทำให้มันเกิดขึ้น มุมกล้องคือข้อมูล การโต้ตอบของกล้องคือโค้ด fireball คือข้อมูล การระเบิดอนุภาคคือโค้ด
+  </div>
+</section>
+
+<!-- ============ 7 STATE ============ -->
+<section id="state">
+  <h2><span class="num">07</span><span data-en="State &amp; persistence">สถานะและการบันทึก</span></h2>
+  <p class="lede" data-en="There is no state library. The entire game is one object, mutated through a callback, serialised without a serialisation layer.">
+    ไม่มี state library เกมทั้งเกมคือ object เดียว แก้ผ่าน callback แล้ว serialize ได้โดยไม่ต้องมีชั้น serialise
+  </p>
+
+  <h3 data-en="The shape of the state">รูปร่างของสถานะ</h3>
+<pre>g: GameState = {
+  partyName, gold, fame, score,
+  members: Member[],   <i>// 4 slots, each a class with levels and HP</i>
+  day, minute,         <i>// one clock for the whole game</i>
+  location, travel,    <i>// current node, or an in-flight path</i>
+  visited: string[], quests: Quest[], cityQuests,
+  inv: Record&lt;...&gt;, bag,   <i>// item id → count, so no stack cap</i>
+  npcs: NpcParty[],    <i>// the standings you are climbing</i>
+  log: LogEntry[], stats, settings,
+}</pre>
+
+  <h3 data-en="Two storage mechanisms, on purpose">กลไกเก็บข้อมูลสองแบบ โดยตั้งใจ</h3>
+  <div class="scroll">
+  <table class="tbl">
+    <thead><tr>
+      <th data-en="Data">ข้อมูล</th>
+      <th data-en="Storage">ที่เก็บ</th>
+      <th data-en="Why">เหตุผล</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td data-en="High scores">ตารางคะแนน</td>
+        <td><code>localStorage</code></td>
+        <td data-en="Meant to outlive the session. A scoreboard that emptied every time you closed the tab would be useless.">
+          ตั้งใจให้อยู่ข้าม session ตารางคะแนนที่ว่างทุกครั้งที่ปิดแท็บคงไม่มีประโยชน์</td>
+      </tr>
+      <tr>
+        <td data-en="Run in progress">การเดินทางที่กำลังไป</td>
+        <td><code>sessionStorage</code></td>
+        <td data-en="The rule is that closing the game loses it. A save surviving a browser restart would quietly become a second, permanent progression track. sessionStorage still survives a refresh, so an accidental reload is not fatal.">
+          กฎคือปิดเกมแล้วหาย เซฟที่รอดการ restart ของเบราว์เซอร์จะกลายเป็นเส้นทางพัฒนาถาวรอีกเส้นหนึ่งเงียบ ๆ ส่วน sessionStorage ยังรอดจากการ refresh ดังนั้นการ reload ผิดพลาดจึงไม่ถึงกับเสีย</td>
+      </tr>
+      <tr>
+        <td data-en="Last party setup">ทีมล่าสุด</td>
+        <td><code>localStorage</code></td>
+        <td data-en="A convenience, not progress. Pre-fills the party builder.">
+          ความสะดวก ไม่ใช่ความคืบหน้า ใช้เติมค่าในหน้าจัดทีม</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3 data-en="How the save is made safe">ทำให้เซฟปลอดภัยอย่างไร</h3>
+  <div class="grid g2">
+    <div class="card">
+      <h3 data-en="One slot, by design">ช่องเดียว โดยตั้งใจ</h3>
+      <p data-en="A run is a roguelite, so the save means “the journey in progress” and starting over is a legitimate action rather than a slot-management chore.">
+        หนึ่งรอบคือ roguelite เซฟจึงหมายถึง “การเดินทางที่กำลังไป” และการเริ่มใหม่คือการกระทำที่ถูกต้อง ไม่ใช่ภาระจัดการช่องบันทึก</p>
+    </div>
+    <div class="card">
+      <h3 data-en="Versioned">มีเวอร์ชัน</h3>
+      <p data-en="A save from an older build is either migrated forward or rejected cleanly — never loaded half-migrated. A save from a newer build is refused outright.">
+        เซฟจากเวอร์ชันเก่าจะถูก migrate ต่อไปหรือปฏิเสธอย่างสะอาด ไม่มีทางถูกโหลดครึ่งทาง เซฟจากเวอร์ชันใหม่กว่าจะถูกปฏิเสธทั้งดุ้น</p>
+    </div>
+    <div class="card">
+      <h3 data-en="Corrupt data is not fatal">ข้อมูลเสียไม่ทำให้พัง</h3>
+      <p data-en="Unparseable JSON, a missing party, or a location that no longer exists on the map all resolve to “no save” rather than a crash.">
+        JSON อ่านไม่ออก ไม่มีสมาชิก หรือตำแหน่งที่ไม่มีบนแผนที่แล้ว ล้วนถูกตีความว่า “ไม่มีเซฟ” ไม่ใช่ทำให้พัง</p>
+    </div>
+    <div class="card">
+      <h3 data-en="Travel is never half-saved">ไม่มีการเดินทางค้างกลางทาง</h3>
+      <p data-en="Writing strips the in-flight journey. Resuming mid-segment would place the party between two nodes with a token at an undefined position.">
+        ตอนเขียนจะตัดการเดินทางที่ค้างอยู่ออก การกลับมาเจอกลางช่วงจะทำให้ปาร์ตี้อยู่กลางระหว่างสองจุด โดยมีโทเคนอยู่ในตำแหน่งที่ไม่มีความหมาย</p>
+    </div>
+  </div>
+
+  <h3 data-en="Losing a fight">เมื่อแพ้</h3>
+  <p data-en="A wipe is a cost, not an ending. The party wakes at 1 HP in the nearest previously-visited city having lost 30% of the purse — the gold plus the walk to an inn is the punishment. Only a voluntary surrender reaches the game over screen.">
+    การพ่ายแพ้คือต้นทุน ไม่ใช่จุดจบ ปาร์ตี้ฟื้นที่ HP 1 ในเมืองที่เคยไปเยือนใกล้สุด หลังเสียทอง 30% ของกระเป๋า ค่าเสียหายคือทองบวกกับการเดินไปโรงแรม เข้าหน้าจอ game over ได้เฉพาะการยอมแพ้ด้วยใจเอง
+  </p>
+  <div class="note" data-en="<b>“Nearest” is measured along the road graph</b>, not as a straight line. The map is a peninsula: two cities can look adjacent on screen while being several days apart on the only route that connects them. Reviving the player where they cannot quickly walk to is the opposite of a rescue. The saved checkpoint is deliberately left untouched, so a reload still replays the pre-defeat run.">
+    <b>“ใกล้ที่สุด” วัดตามกราฟถนน</b> ไม่ใช่เส้นตรง แผนที่เป็นคาบหมู่เกาะ เมืองสองเมืองอาจดูติดกันบนจอแต่เดินกันหลายวันบนเส้นทางเดียวที่เชื่อมกัน การฟื้นที่ในเมืองที่เดินไปไม่ทันคือสิ่งตรงข้ามกับการกู้ชีพพอดี และเช็กพอยต์ที่บันทึกไว้ถูกปล่อยไว้โดยเจตนา เพื่อให้การ reload ยังได้รอบก่อนแพ้
+  </div>
+</section>
+
+<!-- ============ 8 TESTING ============ -->
+<section id="test">
+  <h2><span class="num">08</span><span data-en="Testing">การทดสอบ</span></h2>
+  <p class="lede" data-en="80 tests across four files, run in about a second. Vitest shares the app’s Vite pipeline, and the two halves of the codebase are tested in two different environments.">
+    80 เทสต์ 4 ไฟล์ ใช้เวลาราวหนึ่งวินาที Vitest ใช้ pipeline ของ Vite ตัวเดียวกับแอป และโค้ดสองส่วนถูกเทสต์คนละ environment
+  </p>
+
+  <div class="scroll">
+  <table class="tbl">
+    <thead><tr>
+      <th data-en="Suite">ไฟล์</th><th data-en="Env">Env</th><th data-en="Tests">จำนวน</th><th data-en="Covers">ครอบคลุม</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td><code>game/save.test.ts</code></td>
+        <td><span class="pill p-acc">node</span></td>
+        <td>30</td>
+        <td data-en="Storage target, round trip, corrupt payloads, future versions, the resume path, defeat resolution.">
+          ที่เก็บข้อมูล การไปกลับ payload เสีย เวอร์ชันอนาคต เส้นทางการกลับมา และการจัดการเมื่อแพ้</td>
+      </tr>
+      <tr>
+        <td><code>game/news.test.ts</code></td>
+        <td><span class="pill p-acc">node</span></td>
+        <td>16</td>
+        <td data-en="Determinism per day, category integrity, no undefined or NaN leaking into the text, every city.">
+          ความกำหนดเป็นรายวัน ความถูกต้องของหมวด ไม่มี undefined หรือ NaN รั่วเข้ามาในข้อความ และทุกเมือง</td>
+      </tr>
+      <tr>
+        <td><code>components/TownMenu.test.tsx</code></td>
+        <td><span class="pill p-wip">jsdom</span></td>
+        <td>24</td>
+        <td data-en="The six tiles, every venue transition, back navigation depth, the flattened bounty board, the save slot.">
+          ช่องทั้งหก การเปลี่ยนหน้าทุกสถานที่ ความลึกของปุ่มย้อนกลับ บอร์ดรับงานที่ flatten แล้ว และช่องบันทึก</td>
+      </tr>
+      <tr>
+        <td><code>components/StartScreen.test.tsx</code></td>
+        <td><span class="pill p-wip">jsdom</span></td>
+        <td>10</td>
+        <td data-en="The resume card appearing, updating on focus, and refusing a save it cannot honour.">
+          การ์ดเล่นต่อปรากฏ อัปเดตเมื่อ focus และปฏิเสธเซฟที่ใช้ไม่ได้</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3 data-en="Two environments, one reason">สอง environment เหตุผลเดียว</h3>
+  <p data-en="The environment is set per file with a docblock. Because game/ is pure logic, its suites run on bare Node with no DOM, no shim, and no setup file. Only the component suites pay for jsdom.">
+    กำหนด environment เป็นรายไฟล์ด้วย docblock เพราะ game/ เป็นตรรกะล้วน เทสต์ของมันจึงรันบน Node เปล่า ไม่มี DOM ไม่มี shim ไม่มีไฟล์ setup มีแค่เทสต์คอมโพเนนต์ที่จ่ายค่า jsdom
+  </p>
+
+  <h3 data-en="What the tests are actually for">เทสต์เหล่านี้ตรวจอะไรจริง ๆ</h3>
+  <p data-en="Several assertions encode decisions rather than behaviour — that the save is in sessionStorage, that the bounty board renders exactly one backdrop, that no replacement character reaches the screen. Those are the regressions that a typecheck cannot catch and that only reappear when someone edits a string.">
+    มี assertion หลายข้อที่เข้ารหัสการตัดสินใจ ไม่ใช่แค่พฤติกรรม เช่น เซฟต้องอยู่ใน sessionStorage บอร์ดรับงานต้องมี backdrop แค่ชั้นเดียว และต้องไม่มีอักขระแทนที่หลุดมาถึงหน้าจอ พวกนี้คือ regression ที่ typecheck จับไม่ได้ และจะกลับมาเฉพาะตอนมีคนไปแก้สตริง
+  </p>
+</section>
+
+<!-- ============ 9 COMMANDS ============ -->
+<section id="cmds">
+  <h2><span class="num">09</span><span data-en="Commands">คำสั่ง</span></h2>
+  <p class="lede" data-en="Six scripts. The last one is the one that matters.">
+    หกสคริปต์ ตัวสุดท้ายคือตัวที่สำคัญที่สุด
+  </p>
+  <div class="scroll">
+  <table class="tbl">
+    <thead><tr><th data-en="Command">คำสั่ง</th><th data-en="What it does">ทำอะไร</th></tr></thead>
+    <tbody>
+      <tr><td><code>npm run dev</code></td><td data-en="Dev server on port 5173 with hot reload.">เซิร์ฟเวอร์ dev พอร์ต 5173 พร้อม hot reload</td></tr>
+      <tr><td><code>npm run build</code></td><td data-en="Single-file build into dist/.">build เป็นไฟล์เดียวลง dist/</td></tr>
+      <tr><td><code>npm run preview</code></td><td data-en="Serve the production build locally.">เสิร์ฟตัว build จริงในเครื่อง</td></tr>
+      <tr><td><code>npm run typecheck</code></td><td data-en="tsc --noEmit. Must be clean before commit.">tsc --noEmit ต้องสะอาดก่อน commit</td></tr>
+      <tr><td><code>npm run test</code></td><td data-en="Vitest, single pass, 80 tests.">Vitest รันหนึ่งครั้ง 80 เทสต์</td></tr>
+      <tr><td><code>npm run test:watch</code></td><td data-en="The same suite in watch mode.">ชุดเดียวกันในโหมด watch</td></tr>
+      <tr><td><code>npm run verify</code></td><td data-en="typecheck → test → build, chained. The pre-commit gate.">typecheck → test → build ต่อกัน นี่คือประตูก่อน commit</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============ 10 DECISIONS ============ -->
+<section id="decisions">
+  <h2><span class="num">10</span><span data-en="Deliberate decisions">การตัดสินใจที่ตั้งใจ</span></h2>
+  <p class="lede" data-en="Choices that look like omissions until you know the reason. Each of these had a plausible alternative that was turned down.">
+    ทางเลือกที่ดูเหมือนสิ่งที่ยังไม่ได้ทำ จนกว่าจะรู้เหตุผล แต่ละข้อมีทางเลือกที่ดูสมเหตุสมผลกว่า ซึ่งถูกปฏิเสธไป
+  </p>
+
+  <div class="scroll">
+  <table class="tbl">
+    <thead><tr>
+      <th data-en="Decision">การตัดสินใจ</th>
+      <th data-en="Rejected">ทางเลือกที่ตัดออก</th>
+      <th data-en="Reason">เหตุผล</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td data-en="No state library">ไม่ใช้ state library</td>
+        <td>Redux, Zustand, Jotai</td>
+        <td data-en="One object mutated through a callback. The whole game is one screen tree, so a store would add indirection without buying anything. The cost is manual threading through App.tsx.">
+          object เดียวแก้ผ่าน callback เกมทั้งเกมเป็น screen tree เดียว store จึงเพิ่มชั้นกลางโดยไม่ได้อะไร ต้นทุนคือส่งต่อค่าผ่าน App.tsx ด้วยมือ</td>
+      </tr>
+      <tr>
+        <td data-en="Single-file build">build เป็นไฟล์เดียว</td>
+        <td>Multi-page output, CDN-hosted assets</td>
+        <td data-en="The game should be a file you can send someone. A 785 kB self-contained HTML works from a USB stick, an email attachment, or GitHub Pages with no configuration.">
+          เกมควรเป็นไฟล์ที่ส่งให้คนอื่นได้ HTML 785 kB เปิดจาก USB จากไฟล์แนบเมล หรือบน GitHub Pages ได้โดยไม่ตั้งค่าอะไร</td>
+      </tr>
+      <tr>
+        <td data-en="save in sessionStorage">เซฟเก็บใน sessionStorage</td>
+        <td>localStorage</td>
+        <td data-en="The stated rule is that closing the game loses it. localStorage would make a save outlive a browser restart, quietly creating a second permanent progression track alongside the roguelite run.">
+          กฎที่ตั้งไว้คือปิดเกมแล้วหาย localStorage จะทำให้เซฟอยู่ข้ามการ restart กลายเป็นเส้นทางพัฒนาถาวรอีกเส้นหนึ่งเงียบ ๆ ขนานกับรอบ roguelite</td>
+      </tr>
+      <tr>
+        <td data-en="No router">ไม่ใช้ router</td>
+        <td>React Router</td>
+        <td data-en="Four screens and a handful of modals, all switched by one string. A router would add URL state to an app that is never linked to.">
+          สี่หน้าจอกับหน้าต่างซ้อนไม่กี่ตัว สลับด้วยสตริงเดียว router จะเพิ่มสถานะ URL ในแอปที่ไม่เคยถูกลิงก์</td>
+      </tr>
+      <tr>
+        <td data-en="Game logic is React-free">ตรรกะเกมไม่พึ่ง React</td>
+        <td>Hooks inside game modules</td>
+        <td data-en="Lets the whole rule set run in Node with no renderer, which is what makes the test suite fast enough to actually run before every commit.">
+          ทำให้กฎทั้งชุดรันบน Node ได้โดยไม่ต้องเรนเดอร์ ซึ่งคือเหตุผลที่เทสต์เร็วพอที่จะรันก่อนทุก commit</td>
+      </tr>
+      <tr>
+        <td data-en="News is a pure function">ข่าวเป็น pure function</td>
+        <td>Storing each day’s paper</td>
+        <td data-en="Because it is derived from day, the paper for day 5 is identical every time. Nothing needs storing, and the market chart can never disagree with the newspaper.">
+          เพราะ derive จากวัน หนังสือพิมพ์ของวันที่ 5 จึงเหมือนกันทุกครั้ง ไม่ต้องเก็บอะไร และกราฟราคากับหนังสือพิมพ์จะขัดกันไม่ได้</td>
+      </tr>
+      <tr>
+        <td data-en="Route distance for revival">วัดระยะตามเส้นทางตอนฟื้นที่</td>
+        <td>Straight-line distance</td>
+        <td data-en="On a peninsula the two disagree badly. A city that looks adjacent can be several days away on the only connecting road, and reviving the player there is not a rescue.">
+          บนคาบหมู่เกาะสองอย่างนี้ต่างกันมาก เมืองที่ดูติดกันอาจหลายวันบนถนนเส้นเดียวที่เชื่อมไป การฟื้นที่ตรงนั้นจึงไม่ใช่การกู้ชีพ</td>
+      </tr>
+      <tr>
+        <td data-en="Procedural art">อาร์ตสร้างด้วยโค้ด</td>
+        <td>GLTF models, sprite sheets</td>
+        <td data-en="Keeps the build one file and the repository small. A hero is primitives posed by a rig; a texture is drawn to canvas. The trade-off is that every asset must be re-derivable from code.">
+          ทำให้ build เป็นไฟล์เดียวและ repo เล็ก ตัวละครคือ primitive ที่จัดท่าด้วย rig เท็กซ์เจอร์คือการวาดลง canvas ต้นทุนคือทุกสินทรัพย์ต้องสร้างกลับมาจากโค้ดได้</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============ 11 HISTORY ============ -->
+<section id="history">
+  <h2><span class="num">11</span><span data-en="Build history">ประวัติการพัฒนา</span></h2>
+  <p class="lede" data-en="Eleven commits, oldest first. The pattern is visible: a feature lands, then gets documented, then gets a follow-up fix.">
+    สิบเอ็ด commit เรียงจากเก่าไปใหม่ รูปแบบชัดเจน ฟีเจอร์ลงก่อน แล้วค่อยมีเอกสาร ตามด้วยการแก้ตาม
+  </p>
+  <div class="scroll">
+  <table class="tbl">
+    <thead><tr><th data-en="Commit">Commit</th><th data-en="Subject">หัวข้อ</th><th data-en="What it added">เพิ่มอะไร</th></tr></thead>
+    <tbody>
+      <tr><td><code>95b4eac</code></td><td>Start Build</td><td data-en="The first working map and battle loop.">แผนที่และลูปต่อสู้ที่ใช้งานได้ครั้งแรก</td></tr>
+      <tr><td><code>4e5024f</code></td><td>Add .gitignore, README and project metadata cleanup</td><td data-en="Repository hygiene and the first real README.">การจัดการ repo และ README ฉบับแรก</td></tr>
+      <tr><td><code>fe062d3</code></td><td>feat(camera)</td><td data-en="A single hovering battle camera with drag control.">กล้องสนามรบแบบลอย ควบคุมด้วยการลาก</td></tr>
+      <tr><td><code>61e89b9</code></td><td>feat(fx)</td><td data-en="Moved skill choreography out of code and into data.">ย้ายลำดับการแสดงสกิลจากโค้ดไปเป็นข้อมูล</td></tr>
+      <tr><td><code>27d72b7</code></td><td>feat(battle)</td><td data-en="Staggered entrance and a fixed action delay.">ทางเข้าแบบเรียงเวลา และหน่วงเวลาการกระทำ</td></tr>
+      <tr><td><code>7284276</code></td><td>docs</td><td data-en="Documented the camera module and the fx data layer.">เอกสารโมดูลกล้องและชั้นข้อมูลเอฟเฟ็กซ์</td></tr>
+      <tr><td><code>6fa354f</code></td><td>docs</td><td data-en="The development roadmap.">โรดแมปการพัฒนา</td></tr>
+      <tr><td><code>bedc42e</code></td><td>feat: day/time, inventory, market</td><td data-en="The clock system, a scalable inventory, and the town market.">ระบบนาฬิกา กระเป๋าที่ยืดหยุ่น และตลาดในเมือง</td></tr>
+      <tr><td><code>894a851</code></td><td>feat: crafting</td><td data-en="Gave harvested materials a purpose.">ทำให้วัตถุดิบที่เก็บมามีความหมาย</td></tr>
+      <tr><td><code>6a90063</code></td><td>feat: clock, lighting, travel fixes</td><td data-en="The antique clock, day/night lighting, and three travel bugs.">นาฬิกาโบราณ แสงเปลี่ยนตามเวลา และบั๊กการเดินทางสามจุด</td></tr>
+      <tr><td><code>df3f432</code></td><td>Town venue board, save/resume, news, market</td><td data-en="The six-venue board, the save slot and its resume flow, the daily paper, and the market page — plus the first 80 tests.">
+        บอร์ดเมืองหกช่อง ช่องบันทึกพร้อมเส้นทางเล่นต่อ หนังสือพิมพ์รายวัน และหน้าตลาด พร้อมเทสต์ 80 เคสแรก</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<footer>
+  <p data-en="Compiled from the source at commit df3f432 · every count in this document was read from the code, not from a design document.">
+    เรียบเรียงจากซอร์สที่ commit df3f432 · ตัวเลขทุกตัวในเอกสารนี้อ่านมาจากโค้ด ไม่ใช่จากเอกสารออกแบบ
+  </p>
+  <p style="margin-top:8px">
+    <a href="../README.md">README</a> ·
+    <a href="ROADMAP.html">Roadmap</a> ·
+    <a href="https://github.com/ned2z/ClanBattle">Repository</a>
+  </p>
+</footer>
+
+</div><!-- /wrap -->
+
+<script>
+/*
+ * Language toggle.
+ *
+ * Thai is the real text in the markup; English rides along in data-en. On
+ * first run this captures the Thai that is already there into data-th, so
+ * switching back and forth never has to re-read the DOM. That also means the
+ * page reads correctly as Thai in the raw HTML with scripting off.
+ */
+(function () {
+  var KEY = 'clanbattle-docs-lang';
+  var els = document.querySelectorAll('[data-en]');
+  var i, el;
+
+  for (i = 0; i < els.length; i++) {
+    el = els[i];
+    if (!el.hasAttribute('data-th')) el.setAttribute('data-th', el.innerHTML);
+  }
+
+  function apply(lang) {
+    var want = lang === 'en';
+    document.documentElement.lang = want ? 'en' : 'th';
+    for (var j = 0; j < els.length; j++) {
+      els[j].innerHTML = want ? els[j].getAttribute('data-en') : els[j].getAttribute('data-th');
+    }
+    var btns = document.querySelectorAll('[data-set-lang]');
+    for (var k = 0; k < btns.length; k++) {
+      btns[k].setAttribute('aria-pressed', String(btns[k].getAttribute('data-set-lang') === lang));
+    }
+    try { localStorage.setItem(KEY, lang); } catch (e) { /* private mode */ }
+  }
+
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-set-lang]') : null;
+    if (t) apply(t.getAttribute('data-set-lang'));
+  });
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch (e) { /* private mode */ }
+  apply(saved === 'en' ? 'en' : 'th');
+})();
+</script>
+</body>
+</html>
