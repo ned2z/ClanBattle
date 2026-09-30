@@ -1,189 +1,197 @@
 # ⚔️ สมรภูมิสยาม (ClanBattle)
 
-เกม RPG ต่อสู้แบบ Roguelite ธีมไทย — นำปาร์ตี้ออกเดินทางผ่านแผนที่สยาม เก็บเควส
-ส่งต่อพัฒนาอาชีพ และไล่ไล่ขึ้นอันดับ 1 แห่งสยาม
+A roguelite party RPG set in Thailand — take a party out across a map of Siam,
+clear quests, grow your classes, and fight your way to the top of the Siamese
+leaderboard.
 
-สร้างด้วย **React 19 + TypeScript + Vite 7 + Tailwind CSS 4 + Three.js**
+Built with **React 19 + TypeScript + Vite 7 + Tailwind CSS 4 + Three.js**
 
 ---
 
-## 🎮 เริ่มเล่น
+## 🎮 Getting started
 
 ```bash
-npm install       # ติดตั้ง dependency
-npm run dev       # เปิดเซิร์ฟเวอร์ (ค่าเริ่มต้น http://localhost:5173)
+npm install       # install dependencies
+npm run dev       # start the dev server (defaults to http://localhost:5173)
 ```
 
-| คำสั่ง | ทำอะไร |
+| Command | What it does |
 |---|---|
-| `npm run dev` | เปิด dev server พร้อม hot reload |
-| `npm run build` | build เป็นไฟล์ HTML ไฟล์เดียว ลง `dist/` |
-| `npm run preview` | เปิดตัว build ที่ทำไว้ |
-| `npm run typecheck` | เช็คชนิด TypeScript (`tsc --noEmit`) |
+| `npm run dev` | Dev server with hot reload |
+| `npm run build` | Build into a single HTML file in `dist/` |
+| `npm run preview` | Serve the build you just made |
+| `npm run typecheck` | Check TypeScript types (`tsc --noEmit`) |
+| `npm run test` | Run the test suite |
+| `npm run verify` | Everything: typecheck → test → build |
 
-> 💡 `vite-plugin-singlefile` จะ inline JS + CSS ทั้งหมดเข้าไฟล์ `index.html` เดียว
-> เหมาะกับการ deploy ลง GitHub Pages หรือแชร์เป็นไฟล์เดียว
+> 💡 `vite-plugin-singlefile` inlines all JS and CSS into one `index.html`,
+> which makes it easy to deploy to GitHub Pages or share as a single file
 
 ---
 
-## ⌨️ ปุ่มลัด
+## ⌨️ Keyboard shortcuts
 
-**ทุกที่**
+**Anywhere**
 
-| ปุ่ม | ทำอะไร |
+| Key | Action |
 |---|---|
-| `Esc` | ปิดหน้าต่าง / เปิด-ปิดพักเกม |
-| `P` | พักเกม |
-| `Enter` | เล่นต่อ (ตอนพักเกม) |
+| `Esc` | Close a dialog / open or close the pause menu |
+| `P` | Pause |
+| `Enter` | Resume (while paused) |
 
-**บนแผนที่**
+**On the map**
 
-| ปุ่ม | ทำอะไร |
+| Key | Action |
 |---|---|
-| `Q` | เมนูปาร์ตี้ (พัฒนาอาชีพ/สกิล/อุปกรณ์) |
-| `J` | รายการเควส |
-| `T` | ตารางอันดับ |
-| `L` | บันทึกการเดินทาง |
+| `Q` | Party menu (classes, skills, equipment) |
+| `J` | Quest list |
+| `T` | Leaderboard |
+| `L` | Adventure log |
 
-**ในสนามรบ**
+**In battle**
 
-| ปุ่ม | ทำอะไร |
+| Key | Action |
 |---|---|
-| `Space` / `F` | เปลี่ยนความเร็ว (1x → 2x → 4x) |
-| `Space` / `Enter` | เดินหน้าต่อ (ตอนสรุปผล) |
-| `S` | ข้ามเทิร์น (เร็วขึ้น) |
-| `Tab` | สลับแท็บหน้าสรุป (สรุป → สถิติ → log) |
-| `L` | ซ่อน/แสดงบันทึก |
+| `Space` / `F` | Change speed (1x → 2x → 4x) |
+| `Space` / `Enter` | Advance (on the result screen) |
+| `S` | Skip the turn (faster) |
+| `Tab` | Cycle result tabs (summary → stats → log) |
+| `L` | Hide or show the log |
 
-**หน้าจอแย่งเกม**
+**On the game-over screen**
 
-| ปุ่ม | ทำอะไร |
+| Key | Action |
 |---|---|
-| `R` / `Enter` / `Space` | เล่นใหม่ทันที |
+| `R` / `Enter` / `Space` | Restart immediately |
 
-**เมาส์ / สัมผัส (ในสนามรบ)**
+**Mouse / touch (in battle)**
 
-| ทำอะไร | ผล |
+| Gesture | Result |
 |---|---|
-| ลาก (1 นิ้ว) | หมุนกล้องซ้าย-ขวา / ขึ้น-ลง เล็กน้อย |
-| สองนิ้ว (pinch) | ซูมเข้า-ออก |
-| ปล่อยมือ | กล้องค่อย ๆ กลับกลางเอง |
+| Drag (one finger) | Orbit the camera left / right, and slightly up / down |
+| Pinch (two fingers) | Zoom in and out |
+| Release | Camera eases back to centre on its own |
 
-> กล้องจะไม่รับ input ระหว่างที่กำลังเล่นฉากเปิด / ตัดมุมตอนปล่อยสกิลใหญ่
-> กด `F` เพื่อเร่งความเร็วต่อ ไม่กระทบกล้อง
+> The camera ignores input during cutscenes and while a big skill plays out.
+> Press `F` to speed things up instead — that never disturbs the camera.
 
 ---
 
-## 🗺️ ระบบเกม
+## 🗺️ Game systems
 
-**อาชีพ 6 อาชีพ** — เปลี่ยนอาชีพได้ที่สถานีฝึกในเมือง
+**Six classes** — switch class at a training hall in any city
 
-| อาชีพ | บทบาท |
+| Class | Role |
 |---|---|
-| 🛡️ อัศวินโล่ | แท็งค์แนวหน้า ปกป้องเพื่อน |
-| ⚔️ นักรบดาบใหญ่ | ดาเมจกายภาพรุนแรง |
-| 🗡️ นักฆ่ามีด | เร็ว คริติคอลสูง พิษร้าย |
-| 🔮 จอมเวทย์ดำ | เวทย์ทำลายล้างหมู่ |
-| ✨ นักบวชเวทย์ขาว | ฮีล บัฟ ชุบชีวิต |
-| 💰 พ่อค้าผจญภัย | ส่วนลดร้าน 15% • ทอง +25% |
+| 🛡️ Shieldbearer | Front line. Taunts, guards, soaks the hit that would have killed someone behind. |
+| ⚔️ Greatsword | Highest attack. Trades safety for damage, and doubles down when hurt. |
+| 🗡️ Knife Assassin | Speed and crit. Opens with a preemptive strike and finishes wounded targets. |
+| 🔮 Dark Sorcerer | Hard damage through resistances. The mage that ignores armour. |
+| ✨ Light Cleric | The healer. Revival and party-wide restoration, which is what makes a wipe survivable. |
+| 💰 Merchant | Buys at a discount. The only class that changes the economy rather than the fight. |
 
-**สถานที่บนแผนที่**
+**Map locations**
 
-| จุด | เอฟเฟกต์ |
+| Place | Effect |
 |---|---|
-| 🏯 เมืองใหญ่ | เควส ร้านค้า โรงเตี๊ยม สำนักฝึก |
-| 🏡 หมู่บ้าน | ฟื้นฟู HP 25% ทุกครั้งที่แวะ |
-| ⛩️ ศาลเจ้า | ฟื้น MP 60% • ครั้งแรก +25 ชื่อเสียง |
-| 🏰 ด่านทหาร | ครั้งแรก รับเสบียงยา x2 |
-| ⛺ ค่ายโจร | ศึกบังคับ! (ชนะได้ทองเพิ่ม) |
-| 🏛️ ซากโบราณ | ครั้งแรก ค้นหาสมบัติ / อุปกรณ์ |
-| 💧 บึงน้ำ | ฟื้นฟู HP 15% และ MP 25% |
+| 🏯 City | Quests, shops, inn, training hall |
+| 🏡 Village | Restores 25% HP on every visit |
+| ⛩️ Shrine | Restores 60% MP • first visit +25 fame |
+| 🏰 Fort | First visit: rations ×2 |
+| ⛺ Bandit camp | Forced fight (win it for bonus gold) |
+| 🏛️ Ruins | First visit: find treasure or equipment |
+| 💧 Lake | Restores 15% HP and 25% MP |
 
-**ศัตรู 12 ชนิด** · **สกิล 126 ชนิด** · **ปาร์ตี้ NPC 10 ปาร์ตี้** ที่ไต่อันดับพร้อมกัน
+**12 enemy types** · **126 skills** · **10 NPC parties** climbing the leaderboard at once
 
-> ตัวเลขทั้งสามนับจาก `src/game/data.ts` (`ENEMIES`, `SKILLS`, `NPC_SEED`)
+> All three counts come from `src/game/data.ts` (`ENEMIES`, `SKILLS`, `NPC_SEED`)
 
 ---
 
-## 🗃️ โครงสร้างโค้ด
+## 🗃️ Code structure
 
 ```
 src/
-├── main.tsx              # จุดเริ่มต้นแอป
-├── App.tsx               # สถานะเกมรวม + หน้าจอทั้งหมด
+├── main.tsx              # App entry point
+├── App.tsx               # Overall game state + every screen
 │
-├── game/                 # ตรรกะเกมล้วน (ไม่มี React)
-│   ├── types.ts          # TypeScript types ทั้งหมด
-│   ├── data.ts           # ข้อมูล: เมือง อาชีพ สกิล ศัตรู NPC แผนที่
-│   ├── engine.ts         # สูตรคำนวณ ต่อสู้ (ATB), เส้นทาง, ไอเทม
-│   ├── store.ts          # ตัวจัดการสถานะ + localStorage (high score)
-│   ├── fx.ts             # เอฟเฟกต์ภาพ (ตั้ง, แรงสั่น, ตัวเลขลอย)
-│   ├── portraits.ts      # แผนที่ภาพคลาส
-│   └── portraitData.ts   # ภาพ base64 (inlined เพื่อ build เป็นไฟล์เดียว)
+├── game/                 # Pure game logic (no React)
+│   ├── types.ts          # All TypeScript types
+│   ├── data.ts           # Data: cities, classes, skills, enemies, NPCs, map
+│   ├── engine.ts         # Formulas, battle (ATB), travel, items
+│   ├── store.ts          # State manager + localStorage (high score)
+│   ├── fx.ts             # Screen effects (shake, flash, floating numbers)
+│   ├── portraits.ts      # Portrait sprite atlas
+│   └── portraitData.ts   # base64 images (inlined so the build is one file)
 │
-├── three/                # ฉาก 3D
-│   ├── MapWorld.ts       # แผนที่โลก (นิคม)
-│   ├── BattleWorld.ts    # ฉากต่อสู้
-│   ├── TravelWorld.ts    # ฉากเดินทาง
-│   ├── models.ts         # โมเดลตัวละคร
-│   ├── landmarks.ts      # สิ่งก่อสร้างบนแผนที่
-│   ├── particles.ts      # ระบบอนุภาค
-│   ├── textures.ts       # เท็กซ์เจอร์ที่สร้างด้วย canvas
-│   └── vfx.ts            # เอฟเฟกต์ 3D
+├── three/                # 3D scenes
+│   ├── MapWorld.ts       # World map (the overworld)
+│   ├── BattleWorld.ts    # Battle scene
+│   ├── TravelWorld.ts    # Travel scene
+│   ├── models.ts         # Character models
+│   ├── landmarks.ts      # Map landmarks
+│   ├── particles.ts      # Particle system
+│   ├── textures.ts       # Canvas-generated textures
+│   └── vfx.ts            # 3D effects
 │
 └── components/           # UI (React)
-    ├── StartScreen.tsx   # หน้าเลือกปาร์ตี้
-    ├── MapScreen.tsx     # หน้าแผนที่ + HUD
-    ├── BattleScreen.tsx  # หน้าต่อสู้
-    ├── PartyMenu.tsx     # เมนูพัฒนาปาร์ตี้
-    ├── Panels.tsx        # เควส / ร้านค้า / อันดับ / Modal
-    ├── AdventureLog.tsx  # บันทึกการเดินทาง
-    ├── FxLayer.tsx       # ชั้นเอฟเฟกต์ทั้งหมด
-    └── Icons.tsx         # ไอคอน SVG
+    ├── StartScreen.tsx   # Party select screen
+    ├── MapScreen.tsx     # Map screen + HUD
+    ├── BattleScreen.tsx  # Battle screen
+    ├── PartyMenu.tsx     # Party growth menu
+    ├── Panels.tsx        # Quests / shop / leaderboard / modal
+    ├── AdventureLog.tsx  # Adventure log
+    ├── FxLayer.tsx       # Every effect layer
+    └── Icons.tsx         # SVG icons
 ```
 
-> 🧩 **หลักการ:** `game/` เป็นตรรกะล้วน ไม่พึ่ง React → ทดสอบและนำไปใช้ซ้ำได้ง่าย
-> ส่วน `components/` รับผิดชอบแค่การแสดงผล
+> 🧩 **Principle:** `game/` is pure logic with no React dependency, so it is easy
+> to test and reuse. `components/` only handles presentation.
 
 ---
 
-## 🎥 กล้องสนามรบ (`three/camera/`)
+## 🎥 Battle camera (`three/camera/`)
 
-กล้องถูกทำให้ **เรียบง่ายที่สุด** — ตำแหน่งเดียว ลอยเบาๆ ไป-มา แล้วผู้เล่นหมุนเองได้
+The camera is deliberately **as simple as possible** — one position, a gentle
+drift, and the player is free to orbit it themselves.
 
-| ไฟล์ | หน้าที่ |
+| File | Responsibility |
 |---|---|
-| `shots.ts` | เฟรมกล้องชุดเดียว (ระยะ, fov, ความนุ่ม, ความลอย) |
-| `director.ts` | คำนวณตำแหน่ง + spring กันสะดุด + รับ input จากผู้เล่น |
-| `spring.ts` | `Spring3` / `Spring1` — เคลื่อนที่แบบมีน้ำหนัก |
-| `input.ts` | ลาก / สองนิ้ว หมุนกล้อง |
-| `types.ts` | ชนิดข้อมูล |
+| `shots.ts` | The single camera frame (distance, fov, smoothing, drift) |
+| `director.ts` | Position maths + anti-collision spring + player input |
+| `spring.ts` | `Spring3` / `Spring1` — weighted movement |
+| `input.ts` | Drag / pinch to orbit and zoom |
+| `types.ts` | Types |
 
-**หลักการ**
+**Principles**
 
-- ไม่มีการตัดมุมเลย — กล้องอยู่ที่เดิมตลอดการต่อสู้
-- กล้อง "ตามศูนย์กลางสนาม" อัตโนมัติ เมื่อมีตัวละครตายก็ถอยออกให้เห็นคนที่เหลือ
-- ไม่มี depth of field (ตัด `BokehPass` ออก — เร็วขึ้น และภาพคมชัด)
-- ไม่มี cinematic เปิดฉาก / จบสนาม / แถบดำ
-- ลากเมาส์ = หมุนกล้อง · สองนิ้ว = ซูม · ปล่อยมือ = ค่อย ๆ กลับกลาง
-- ULT ได้ slow-motion + จอขาว เท่านั้น กล้องไม่ขยับและไม่สั่น
+- No cuts at all — the camera stays put for the whole battle
+- Automatic "follow the centre of the field" framing; it pulls back as
+  characters fall so the survivors stay in frame
+- No depth of field (`BokehPass` was removed — faster and sharper)
+- No cinematic openers, battle-end moves, or letterbox bars
+- Drag to orbit · pinch to zoom · release to ease back to centre
+- ULTs get slow motion and a white flash only; the camera never moves or shakes
 
-> ถ้าอยากทดลองกล้องแบบเดิมของเกม เรียก `world.setDirector(false)` ได้
+> To try the game's original camera behaviour, call `world.setDirector(false)`.
 
-## ⚙️ คำสั่ง Git ที่ใช้บ่อย
+---
+
+## ⚙️ Common Git commands
 
 ```bash
-git status              # ดูสถานะ
+git status              # check status
 git add .
-git commit -m "ข้อความ"
-git push origin main    # ส่งขึ้น GitHub
+git commit -m "message"
+git push origin main    # send it to GitHub
 ```
 
-ข้อมูลผู้เล่น (setup, high score) ถูกเก็บใน `localStorage` ของเบราว์เซอร์ ไม่ถูกส่งขึ้นเซิร์ฟเวอร์
+Player data (setup, high score) lives in the browser's `localStorage` and is
+never sent to a server.
 
 ---
 
-## 🔧 เทคโนโลยี
+## 🔧 Tech stack
 
 | | |
 |---|---|
@@ -193,29 +201,10 @@ git push origin main    # ส่งขึ้น GitHub
 | Tailwind CSS | 4.1 |
 | Three.js | 0.186 |
 
-**ต้องใช้:** Node.js 20+ (ทดสอบด้วย v22.15.0)
+**Requires:** Node.js 20+ (tested on v22.15.0)
 
----
+**License:** [MIT](LICENSE) — use, modify, sell and build on it commercially,
+as long as you keep the copyright notice.
 
-## ❓ ขอความช่วยเหลือ
-
-เจอบั๊ก อยากเสนอฟีเจอร์ หรือมีคำถามเรื่องโค้ด
-→ เปิด Issue ที่ <https://github.com/ned2z/ClanBattle/issues>
-
-ถ้าเป็นบั๊ก ช่วยแนบขั้นตอนที่ทำให้เกิดปัญหา ค่า Node.js (`node -v`)
-และผลของ `npm run verify` มาด้วย จะช่วยให้กันซ้ำได้เร็วขึ้น
-
----
-
-## 👤 ผู้ดูแลและการมีส่วนร่วม
-
-ดูแลโดย **ned2z** — ส่งอีเมลได้ที่ <fullmetalgame@gmail.com>
-
-ยินดีรับการมีส่วนร่วม วิธีที่ง่ายที่สุดคือ fork แล้วเปิด Pull Request
-ก่อน commit กรุณารัน `npm run verify` (typecheck → test → build) ให้ผ่านทั้งหมด
-
-เอกสารประกอบ: [สแต็กเทคนิค (สองภาษา)](docs/STACK.html) ·
-[โรดแมป](docs/ROADMAP.html)
-
-**สัญญาอนุญาต:** [MIT](LICENSE) — ใช้ แก้ไข ขายต่อ และประยุกต์ใช้เชิงพาณิชย์ได้
-ตราบใดที่เก็บเครดิตผู้เขียนไว้
+Further reading: [Technical stack (bilingual)](docs/STACK.html) ·
+[Roadmap](docs/ROADMAP.html)
